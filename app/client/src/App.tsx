@@ -10,6 +10,14 @@ import MembersPage from './pages/MembersPage';
 import SettingsPage from './pages/SettingsPage';
 import Layout from './components/Layout';
 
+// Super Admin Pages
+import SuperAdminLoginPage from './pages/super-admin/SuperAdminLoginPage';
+import SuperAdminDashboard from './pages/super-admin/SuperAdminDashboard';
+import TenantDetailPage from './pages/super-admin/TenantDetailPage';
+
+// Invitation Page
+import InvitationPage from './pages/InvitationPage';
+
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
@@ -42,6 +50,15 @@ function App() {
   return (
     <div className="app-container">
       <Routes>
+        {/* Super Admin Routes */}
+        <Route path="/super-admin/login" element={<SuperAdminLoginPage />} />
+        <Route path="/super-admin" element={<SuperAdminDashboard />} />
+        <Route path="/super-admin/tenants/:tenantId" element={<TenantDetailPage />} />
+
+        {/* Invitation Route */}
+        <Route path="/invite/:token" element={<InvitationPage />} />
+
+        {/* Regular User Routes */}
         <Route
           path="/login"
           element={user ? <Navigate to="/" replace /> : <LoginPage />}

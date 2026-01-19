@@ -18,7 +18,8 @@ if (usePostgres) {
 }
 const { initDatabase, run, get, all, saveDatabase } = dbModule;
 
-import { initializeKpiMaster, addKpi, updateKpi, deleteKpi } from './kpi-master.js';
+import { initializeKpiMaster, initializeDefaultTemplate, addKpi, updateKpi, deleteKpi } from './kpi-master.js';
+import superAdminRouter from './super-admin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,9 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// スーパー管理者API
+app.use('/api/super-admin', superAdminRouter);
 
 // 本番環境ではフロントエンドの静的ファイルを配信
 if (process.env.NODE_ENV === 'production') {
@@ -77,12 +81,12 @@ const checkRole = (requiredRoles) => async (req, res, next) => {
 
 // ========== 認証API ==========
 
-// ユーザー登録
+// ユーザー登録（テナントなし - 後方互換用）
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, tenantId } = req.body;
 
-    const existing = await get('SELECT id FROM users WHERE email = ?', [email]);
+    const existing = await get('SELECT id FROM users WHERE email = ? AND (tenant_id = ? OR tenant_id IS NULL)', [email, tenantId || null]);
     if (existing) {
       return res.status(400).json({ error: 'このメールアドレスは既に登録されています' });
     }
@@ -91,25 +95,115 @@ app.post('/api/auth/register', async (req, res) => {
     const userId = uuidv4();
 
     await run(
-      `INSERT INTO users (id, email, password, name) VALUES (?, ?, ?, ?)`,
-      [userId, email, hashedPassword, name]
+      `INSERT INTO users (id, tenant_id, email, password, name, role) VALUES (?, ?, ?, ?, ?, ?)`,
+      [userId, tenantId || null, email, hashedPassword, name, tenantId ? 'member' : 'tenant_admin']
     );
 
-    const token = jwt.sign({ id: userId, email, name }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: userId, email, name, tenantId: tenantId || null }, JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ token, user: { id: userId, email, name } });
+    res.json({ token, user: { id: userId, email, name, tenantId: tenantId || null } });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'ユーザー登録に失敗しました' });
   }
 });
 
+// 招待からの登録
+app.post('/api/auth/register-by-invitation', async (req, res) => {
+  try {
+    const { token: inviteToken, password, name } = req.body;
+
+    // 招待トークンの検証
+    const invitation = await get(
+      `SELECT * FROM tenant_invitations WHERE token = ? AND used_at IS NULL AND expires_at > datetime('now')`,
+      [inviteToken]
+    );
+
+    if (!invitation) {
+      return res.status(400).json({ error: '招待が無効または期限切れです' });
+    }
+
+    // 既存ユーザーチェック
+    const existing = await get('SELECT id FROM users WHERE email = ? AND tenant_id = ?', [invitation.email, invitation.tenant_id]);
+    if (existing) {
+      return res.status(400).json({ error: 'このメールアドレスは既にこのテナントに登録されています' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const userId = uuidv4();
+
+    // ユーザー作成
+    await run(
+      `INSERT INTO users (id, tenant_id, email, password, name, role) VALUES (?, ?, ?, ?, ?, ?)`,
+      [userId, invitation.tenant_id, invitation.email, hashedPassword, name, invitation.role === 'admin' ? 'tenant_admin' : 'member']
+    );
+
+    // 招待を使用済みに
+    await run(`UPDATE tenant_invitations SET used_at = datetime('now') WHERE id = ?`, [invitation.id]);
+
+    const tenant = await get('SELECT name FROM tenants WHERE id = ?', [invitation.tenant_id]);
+
+    const jwtToken = jwt.sign(
+      { id: userId, email: invitation.email, name, tenantId: invitation.tenant_id },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token: jwtToken,
+      user: { id: userId, email: invitation.email, name, tenantId: invitation.tenant_id },
+      tenant: { id: invitation.tenant_id, name: tenant.name }
+    });
+  } catch (error) {
+    console.error('Invitation registration error:', error);
+    res.status(500).json({ error: '登録に失敗しました' });
+  }
+});
+
+// 招待情報取得（トークンから）
+app.get('/api/auth/invitation/:token', async (req, res) => {
+  const invitation = await get(
+    `SELECT i.*, t.name as tenant_name
+     FROM tenant_invitations i
+     JOIN tenants t ON i.tenant_id = t.id
+     WHERE i.token = ? AND i.used_at IS NULL AND i.expires_at > datetime('now')`,
+    [req.params.token]
+  );
+
+  if (!invitation) {
+    return res.status(404).json({ error: '招待が見つからないか、期限切れです' });
+  }
+
+  res.json({
+    email: invitation.email,
+    role: invitation.role,
+    tenantName: invitation.tenant_name,
+    expiresAt: invitation.expires_at
+  });
+});
+
 // ログイン
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, tenantSlug } = req.body;
 
-    const user = await get('SELECT * FROM users WHERE email = ?', [email]);
+    let user;
+    if (tenantSlug) {
+      // テナント指定でログイン
+      const tenant = await get('SELECT id FROM tenants WHERE slug = ? AND status = "active"', [tenantSlug]);
+      if (!tenant) {
+        return res.status(404).json({ error: 'テナントが見つかりません' });
+      }
+      user = await get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenant.id]);
+    } else {
+      // テナントなしでログイン（後方互換）
+      user = await get('SELECT * FROM users WHERE email = ? AND tenant_id IS NULL', [email]);
+      if (!user) {
+        // テナントありのユーザーを検索
+        user = await get('SELECT * FROM users WHERE email = ?', [email]);
+      }
+    }
+
     if (!user) {
       return res.status(401).json({ error: 'メールアドレスまたはパスワードが正しくありません' });
     }
@@ -119,9 +213,23 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'メールアドレスまたはパスワードが正しくありません' });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name, tenantId: user.tenant_id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
-    res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+    // テナント情報も取得
+    let tenant = null;
+    if (user.tenant_id) {
+      tenant = await get('SELECT id, name, slug FROM tenants WHERE id = ?', [user.tenant_id]);
+    }
+
+    res.json({
+      token,
+      user: { id: user.id, email: user.email, name: user.name, tenantId: user.tenant_id, role: user.role },
+      tenant
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'ログインに失敗しました' });
@@ -130,34 +238,61 @@ app.post('/api/auth/login', async (req, res) => {
 
 // 現在のユーザー情報取得
 app.get('/api/auth/me', authenticate, async (req, res) => {
-  const user = await get('SELECT id, email, name FROM users WHERE id = ?', [req.user.id]);
-  res.json(user);
+  const user = await get('SELECT id, email, name, tenant_id, role FROM users WHERE id = ?', [req.user.id]);
+
+  let tenant = null;
+  if (user.tenant_id) {
+    tenant = await get('SELECT id, name, slug FROM tenants WHERE id = ?', [user.tenant_id]);
+  }
+
+  res.json({ ...user, tenant });
 });
 
 // ========== プロジェクトAPI ==========
 
-// プロジェクト一覧取得
+// プロジェクト一覧取得（テナント対応）
 app.get('/api/projects', authenticate, async (req, res) => {
-  const projects = await all(`
-    SELECT p.*, pm.role, u.name as owner_name
-    FROM projects p
-    JOIN project_members pm ON p.id = pm.project_id
-    JOIN users u ON p.owner_id = u.id
-    WHERE pm.user_id = ?
-  `, [req.user.id]);
+  const tenantId = req.user.tenantId;
 
+  let query;
+  let params;
+
+  if (tenantId) {
+    // テナントに所属している場合、テナント内のプロジェクトのみ取得
+    query = `
+      SELECT p.*, pm.role, u.name as owner_name
+      FROM projects p
+      JOIN project_members pm ON p.id = pm.project_id
+      JOIN users u ON p.owner_id = u.id
+      WHERE pm.user_id = ? AND p.tenant_id = ?
+    `;
+    params = [req.user.id, tenantId];
+  } else {
+    // テナントなしの場合（後方互換）、テナントなしのプロジェクトのみ
+    query = `
+      SELECT p.*, pm.role, u.name as owner_name
+      FROM projects p
+      JOIN project_members pm ON p.id = pm.project_id
+      JOIN users u ON p.owner_id = u.id
+      WHERE pm.user_id = ? AND p.tenant_id IS NULL
+    `;
+    params = [req.user.id];
+  }
+
+  const projects = await all(query, params);
   res.json(projects);
 });
 
-// プロジェクト作成
+// プロジェクト作成（テナント対応）
 app.post('/api/projects', authenticate, async (req, res) => {
   try {
     const { name } = req.body;
     const projectId = uuidv4();
+    const tenantId = req.user.tenantId || null;
 
     await run(
-      `INSERT INTO projects (id, name, owner_id) VALUES (?, ?, ?)`,
-      [projectId, name, req.user.id]
+      `INSERT INTO projects (id, tenant_id, name, owner_id) VALUES (?, ?, ?, ?)`,
+      [projectId, tenantId, name, req.user.id]
     );
 
     // オーナーを管理者として追加
@@ -166,7 +301,7 @@ app.post('/api/projects', authenticate, async (req, res) => {
       [projectId, req.user.id]
     );
 
-    res.json({ id: projectId, name, owner_id: req.user.id });
+    res.json({ id: projectId, tenant_id: tenantId, name, owner_id: req.user.id });
   } catch (error) {
     console.error('Create project error:', error);
     res.status(500).json({ error: 'プロジェクト作成に失敗しました' });
@@ -276,16 +411,24 @@ app.delete('/api/projects/:projectId/members/:userId', authenticate, checkRole([
 
 // ========== KPI API ==========
 
-// KPIマスター一覧取得
-app.get('/api/kpi-master', async (req, res) => {
-  const kpis = await all('SELECT * FROM kpi_master ORDER BY level, agent, category, id');
+// KPIマスター一覧取得（テナント対応）
+app.get('/api/kpi-master', authenticate, async (req, res) => {
+  const tenantId = req.user.tenantId;
+  let kpis;
+  if (tenantId) {
+    kpis = await all('SELECT * FROM kpi_master WHERE tenant_id = ? ORDER BY level, agent, category, id', [tenantId]);
+  } else {
+    // テナントなし（後方互換）
+    kpis = await all('SELECT * FROM kpi_master WHERE tenant_id IS NULL ORDER BY level, agent, category, id');
+  }
   res.json(kpis);
 });
 
-// KPI追加
+// KPI追加（テナント対応）
 app.post('/api/kpi-master', authenticate, async (req, res) => {
   try {
-    const kpi = await addKpi(req.body);
+    const tenantId = req.user.tenantId;
+    const kpi = await addKpi(req.body, tenantId);
     res.json(kpi);
   } catch (error) {
     console.error('Add KPI error:', error);
@@ -293,9 +436,17 @@ app.post('/api/kpi-master', authenticate, async (req, res) => {
   }
 });
 
-// KPI更新
+// KPI更新（テナント対応 - 権限チェック）
 app.put('/api/kpi-master/:kpiId', authenticate, async (req, res) => {
   try {
+    const tenantId = req.user.tenantId;
+    const existingKpi = await get('SELECT * FROM kpi_master WHERE id = ?', [req.params.kpiId]);
+    if (!existingKpi) {
+      return res.status(404).json({ error: 'KPIが見つかりません' });
+    }
+    if (tenantId && existingKpi.tenant_id !== tenantId) {
+      return res.status(403).json({ error: '権限がありません' });
+    }
     const kpi = await updateKpi(req.params.kpiId, req.body);
     res.json(kpi);
   } catch (error) {
@@ -304,9 +455,17 @@ app.put('/api/kpi-master/:kpiId', authenticate, async (req, res) => {
   }
 });
 
-// KPI削除
+// KPI削除（テナント対応 - 権限チェック）
 app.delete('/api/kpi-master/:kpiId', authenticate, async (req, res) => {
   try {
+    const tenantId = req.user.tenantId;
+    const existingKpi = await get('SELECT * FROM kpi_master WHERE id = ?', [req.params.kpiId]);
+    if (!existingKpi) {
+      return res.status(404).json({ error: 'KPIが見つかりません' });
+    }
+    if (tenantId && existingKpi.tenant_id !== tenantId) {
+      return res.status(403).json({ error: '権限がありません' });
+    }
     await deleteKpi(req.params.kpiId);
     res.json({ message: 'KPIを削除しました' });
   } catch (error) {
@@ -516,11 +675,17 @@ async function start() {
     await initDatabase();
     console.log('[OK] Database initialized');
 
+    // デフォルトKPIテンプレートを初期化
+    await initializeDefaultTemplate();
+    console.log('[OK] Default KPI template initialized');
+
+    // 後方互換用：テナントなしのグローバルKPIを初期化
     await initializeKpiMaster();
     console.log('[OK] KPI Master data initialized');
 
     app.listen(PORT, () => {
       console.log(`[Server] D2C KPI Dashboard running on http://localhost:${PORT}`);
+      console.log(`[Server] Super Admin API: http://localhost:${PORT}/api/super-admin`);
       if (process.env.NODE_ENV === 'production') {
         console.log('[Server] Running in production mode');
       }

@@ -29,8 +29,11 @@ export async function initDatabase() {
   }
 
   // テーブル作成
+  // ========== マルチテナント用テーブル ==========
+
+  // スーパー管理者（プラットフォーム管理者）
   db.run(`
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE IF NOT EXISTS super_admins (
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
@@ -39,12 +42,58 @@ export async function initDatabase() {
     )
   `);
 
+  // テナント（クライアント組織）
+  db.run(`
+    CREATE TABLE IF NOT EXISTS tenants (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      status TEXT DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'deleted')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_by TEXT NOT NULL,
+      FOREIGN KEY (created_by) REFERENCES super_admins(id)
+    )
+  `);
+
+  // テナント招待
+  db.run(`
+    CREATE TABLE IF NOT EXISTS tenant_invitations (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      role TEXT DEFAULT 'admin' CHECK (role IN ('admin', 'editor', 'viewer')),
+      token TEXT UNIQUE NOT NULL,
+      expires_at DATETIME NOT NULL,
+      used_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+    )
+  `);
+
+  // ========== 既存テーブル（テナント対応） ==========
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT,
+      email TEXT NOT NULL,
+      password TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT DEFAULT 'member' CHECK (role IN ('tenant_admin', 'member')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+      UNIQUE (tenant_id, email)
+    )
+  `);
+
   db.run(`
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
+      tenant_id TEXT,
       name TEXT NOT NULL,
       owner_id TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
       FOREIGN KEY (owner_id) REFERENCES users(id)
     )
   `);
@@ -91,9 +140,22 @@ export async function initDatabase() {
     )
   `);
 
+  // KPIテンプレート（グローバル - 全テナント共通の雛形）
   db.run(`
-    CREATE TABLE IF NOT EXISTS kpi_master (
+    CREATE TABLE IF NOT EXISTS kpi_templates (
       id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      is_default INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // KPIテンプレート項目
+  db.run(`
+    CREATE TABLE IF NOT EXISTS kpi_template_items (
+      id TEXT PRIMARY KEY,
+      template_id TEXT NOT NULL,
       agent TEXT NOT NULL,
       category TEXT NOT NULL,
       name TEXT NOT NULL,
@@ -103,7 +165,27 @@ export async function initDatabase() {
       benchmark_max REAL,
       parent_kpi_id TEXT,
       level INTEGER DEFAULT 1,
-      description TEXT
+      description TEXT,
+      FOREIGN KEY (template_id) REFERENCES kpi_templates(id)
+    )
+  `);
+
+  // KPIマスター（テナント別 - 実際に使用するKPI）
+  db.run(`
+    CREATE TABLE IF NOT EXISTS kpi_master (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT,
+      agent TEXT NOT NULL,
+      category TEXT NOT NULL,
+      name TEXT NOT NULL,
+      unit TEXT NOT NULL,
+      default_target REAL,
+      benchmark_min REAL,
+      benchmark_max REAL,
+      parent_kpi_id TEXT,
+      level INTEGER DEFAULT 1,
+      description TEXT,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     )
   `);
 

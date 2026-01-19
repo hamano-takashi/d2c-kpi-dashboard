@@ -8,13 +8,8 @@ if (usePostgres) {
 }
 const { get, run, all, saveDatabase } = dbModule;
 
-// KPI Master Data - D2C Business Structure
-// 売上 = 集客 × CVR × 顧客単価 × LTV
-export async function initializeKpiMaster() {
-  const count = await get('SELECT COUNT(*) as count FROM kpi_master');
-  if (count && count.count > 0) return;
-
-  const kpis = [
+// D2C KPIデータ定義
+const DEFAULT_KPI_DATA = [
     // ========== KGI (Top Level) ==========
     { id: 'kgi_001', agent: 'COMMANDER', category: 'KGI', name: '年間売上', unit: '円', default_target: 1300000000, benchmark_min: 1000000000, benchmark_max: 1500000000, level: 1, parent_kpi_id: null, description: '年間売上目標13億円。売上 = 集客 × CVR × 顧客単価 × LTV' },
 
@@ -128,50 +123,128 @@ export async function initializeKpiMaster() {
     // ========== 広告クリエイティブ ==========
     { id: 'crt_ads', agent: 'CREATIVE', category: '広告クリエイティブ', name: '広告クリエイティブ数', unit: '本', default_target: 100, benchmark_min: 50, benchmark_max: 200, level: 5, parent_kpi_id: 'own_paid', description: 'アクティブな広告クリエイティブ数' },
     { id: 'crt_ctr', agent: 'CREATIVE', category: '広告クリエイティブ', name: '広告CTR', unit: '%', default_target: 1.5, benchmark_min: 0.8, benchmark_max: 3.0, level: 5, parent_kpi_id: 'own_paid', description: '広告クリック率' },
-  ];
+];
 
-  for (const kpi of kpis) {
+// デフォルトKPIテンプレートを初期化
+export async function initializeDefaultTemplate() {
+  const existingTemplate = await get('SELECT id FROM kpi_templates WHERE is_default = 1');
+  if (existingTemplate) return existingTemplate.id;
+
+  const templateId = 'default_d2c_template';
+
+  await run(
+    `INSERT INTO kpi_templates (id, name, description, is_default) VALUES (?, ?, ?, 1)`,
+    [templateId, 'D2C標準KPIテンプレート', '売上 = 集客 × CVR × 顧客単価 × LTV の構造に基づくD2Cビジネス向け標準KPIセット']
+  );
+
+  for (const kpi of DEFAULT_KPI_DATA) {
+    const itemId = `${templateId}_${kpi.id}`;
     await run(
-      `INSERT INTO kpi_master (id, agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        kpi.id,
-        kpi.agent,
-        kpi.category,
-        kpi.name,
-        kpi.unit,
-        kpi.default_target,
-        kpi.benchmark_min,
-        kpi.benchmark_max,
-        kpi.level,
-        kpi.parent_kpi_id,
-        kpi.description || null
-      ]
+      `INSERT INTO kpi_template_items (id, template_id, agent, category, name, unit, default_target, benchmark_min, benchmark_max, parent_kpi_id, level, description)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [itemId, templateId, kpi.agent, kpi.category, kpi.name, kpi.unit, kpi.default_target, kpi.benchmark_min, kpi.benchmark_max, kpi.parent_kpi_id, kpi.level, kpi.description]
     );
   }
 
   saveDatabase();
-  console.log(`[OK] KPI Master data initialized (${kpis.length} items)`);
+  console.log(`[OK] Default KPI template initialized (${DEFAULT_KPI_DATA.length} items)`);
+  return templateId;
 }
 
-// KPI追加機能
-export async function addKpi(kpiData) {
+// KPIマスター初期化（後方互換用 - tenant_idなしで初期化）
+export async function initializeKpiMaster() {
+  const count = await get('SELECT COUNT(*) as count FROM kpi_master WHERE tenant_id IS NULL');
+  if (count && count.count > 0) return;
+
+  for (const kpi of DEFAULT_KPI_DATA) {
+    await run(
+      `INSERT INTO kpi_master (id, tenant_id, agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description)
+       VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [kpi.id, kpi.agent, kpi.category, kpi.name, kpi.unit, kpi.default_target, kpi.benchmark_min, kpi.benchmark_max, kpi.level, kpi.parent_kpi_id, kpi.description]
+    );
+  }
+
+  saveDatabase();
+  console.log(`[OK] KPI Master data initialized (${DEFAULT_KPI_DATA.length} items)`);
+}
+
+// テナント用にKPIを初期化
+export async function initializeKpiForTenant(tenantId, templateId = null) {
+  const count = await get('SELECT COUNT(*) as count FROM kpi_master WHERE tenant_id = ?', [tenantId]);
+  if (count && count.count > 0) return;
+
+  let sourceData;
+  let sourceTemplateId = templateId;
+
+  if (templateId) {
+    sourceData = await all('SELECT * FROM kpi_template_items WHERE template_id = ?', [templateId]);
+  } else {
+    const defaultTemplate = await get('SELECT id FROM kpi_templates WHERE is_default = 1');
+    if (defaultTemplate) {
+      sourceTemplateId = defaultTemplate.id;
+      sourceData = await all('SELECT * FROM kpi_template_items WHERE template_id = ?', [defaultTemplate.id]);
+    } else {
+      sourceTemplateId = null;
+      sourceData = DEFAULT_KPI_DATA;
+    }
+  }
+
+  for (const kpi of sourceData) {
+    // テンプレートIDプレフィックスを除去してオリジナルIDを抽出
+    let baseId;
+    if (sourceTemplateId && kpi.id.startsWith(sourceTemplateId + '_')) {
+      baseId = kpi.id.substring(sourceTemplateId.length + 1);
+    } else {
+      baseId = kpi.id;
+    }
+
+    const newId = `${tenantId}_${baseId}`;
+
+    // 親KPIのIDも同様に変換
+    let parentId = null;
+    if (kpi.parent_kpi_id) {
+      let baseParentId;
+      if (sourceTemplateId && kpi.parent_kpi_id.startsWith(sourceTemplateId + '_')) {
+        baseParentId = kpi.parent_kpi_id.substring(sourceTemplateId.length + 1);
+      } else {
+        baseParentId = kpi.parent_kpi_id;
+      }
+      parentId = `${tenantId}_${baseParentId}`;
+    }
+
+    await run(
+      `INSERT INTO kpi_master (id, tenant_id, agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [newId, tenantId, kpi.agent, kpi.category, kpi.name, kpi.unit, kpi.default_target, kpi.benchmark_min, kpi.benchmark_max, kpi.level, parentId, kpi.description]
+    );
+  }
+
+  saveDatabase();
+  console.log(`[OK] KPI Master data initialized for tenant ${tenantId} (${sourceData.length} items)`);
+}
+
+// KPI追加機能（テナント対応）
+export async function addKpi(kpiData, tenantId = null) {
   const { id, agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description } = kpiData;
 
+  // テナント用IDを生成
+  const kpiId = tenantId ? `${tenantId}_${id}` : id;
+  const parentKpiId = parent_kpi_id && tenantId ? `${tenantId}_${parent_kpi_id}` : parent_kpi_id;
+
   // 既存チェック
-  const existing = await get('SELECT id FROM kpi_master WHERE id = ?', [id]);
+  const existing = await get('SELECT id FROM kpi_master WHERE id = ?', [kpiId]);
   if (existing) {
     throw new Error('KPI ID already exists');
   }
 
   await run(
-    `INSERT INTO kpi_master (id, agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description]
+    `INSERT INTO kpi_master (id, tenant_id, agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [kpiId, tenantId, agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parentKpiId, description]
   );
 
   saveDatabase();
-  return await get('SELECT * FROM kpi_master WHERE id = ?', [id]);
+  return await get('SELECT * FROM kpi_master WHERE id = ?', [kpiId]);
 }
 
 // KPI更新機能
@@ -198,4 +271,13 @@ export async function deleteKpi(id) {
 
   await run('DELETE FROM kpi_master WHERE id = ?', [id]);
   saveDatabase();
+}
+
+// テナント別KPI一覧取得
+export async function getKpisByTenant(tenantId) {
+  if (tenantId) {
+    return await all('SELECT * FROM kpi_master WHERE tenant_id = ? ORDER BY level, agent, category, id', [tenantId]);
+  }
+  // テナントなしの場合は従来のグローバルKPI
+  return await all('SELECT * FROM kpi_master WHERE tenant_id IS NULL ORDER BY level, agent, category, id');
 }
