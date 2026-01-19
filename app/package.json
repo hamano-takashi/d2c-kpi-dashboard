@@ -1,0 +1,16 @@
+{
+  "name": "d2c-kpi-dashboard",
+  "version": "1.0.0",
+  "description": "D2C KPI管理ダッシュボード - 目標売上13億円達成のためのKGI/KPI管理システム",
+  "scripts": {
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

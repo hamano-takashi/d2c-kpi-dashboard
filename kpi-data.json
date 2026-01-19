@@ -1,0 +1,419 @@
+{
+  "meta": {
+    "title": "D2C KPI Management System",
+    "version": "1.0.0",
+    "targetRevenue": 1300000000,
+    "currency": "JPY"
+  },
+  "agents": [
+    {
+      "id": "commander",
+      "name": "COMMANDER",
+      "icon": "🎯",
+      "description": "戦略・フェーズ・競合",
+      "categories": [
+        {
+          "name": "財務KGI",
+          "kpis": [
+            {"id": "cmd_001", "name": "年商", "target": 1300000000, "unit": "円", "benchmark_min": 1000000000, "benchmark_max": 1500000000, "level": "KGI"},
+            {"id": "cmd_002", "name": "営業利益", "target": 195000000, "unit": "円", "benchmark_min": 130000000, "benchmark_max": 260000000, "level": "KGI"},
+            {"id": "cmd_003", "name": "営業利益率", "target": 15, "unit": "%", "benchmark_min": 10, "benchmark_max": 20, "level": "KGI"},
+            {"id": "cmd_004", "name": "粗利", "target": 845000000, "unit": "円", "benchmark_min": 650000000, "benchmark_max": 910000000, "level": "KPI-L1"},
+            {"id": "cmd_005", "name": "粗利率", "target": 65, "unit": "%", "benchmark_min": 55, "benchmark_max": 75, "level": "KPI-L1"},
+            {"id": "cmd_006", "name": "ROIC", "target": 25, "unit": "%", "benchmark_min": 15, "benchmark_max": 35, "level": "KPI-L1"},
+            {"id": "cmd_007", "name": "月商", "target": 108000000, "unit": "円", "benchmark_min": 83000000, "benchmark_max": 125000000, "level": "KPI-L2"},
+            {"id": "cmd_008", "name": "日商", "target": 3600000, "unit": "円", "benchmark_min": 2800000, "benchmark_max": 4200000, "level": "KPI-L2"},
+            {"id": "cmd_009", "name": "FCF", "target": 150000000, "unit": "円", "benchmark_min": 100000000, "benchmark_max": 200000000, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "ユニットエコノミクス",
+          "kpis": [
+            {"id": "cmd_010", "name": "LTV-CPA", "target": 9462, "unit": "円", "benchmark_min": 5000, "benchmark_max": 15000, "level": "KGI"},
+            {"id": "cmd_011", "name": "LTV÷CPA", "target": 3.0, "unit": "倍", "benchmark_min": 2.0, "benchmark_max": 5.0, "level": "KGI"},
+            {"id": "cmd_012", "name": "粗利LTV", "target": 9750, "unit": "円", "benchmark_min": 6000, "benchmark_max": 15000, "level": "KPI-L1"},
+            {"id": "cmd_013", "name": "粗利LTV-CPA", "target": 4212, "unit": "円", "benchmark_min": 2000, "benchmark_max": 10000, "level": "KPI-L1"},
+            {"id": "cmd_014", "name": "新規既存売上比率（新規）", "target": 60, "unit": "%", "benchmark_min": 40, "benchmark_max": 70, "level": "KPI-L2"},
+            {"id": "cmd_015", "name": "顧客資産価値総額", "target": 1300000000, "unit": "円", "benchmark_min": 1000000000, "benchmark_max": 1500000000, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "チャネル別売上",
+          "kpis": [
+            {"id": "cmd_016", "name": "Amazon売上", "target": 550000000, "unit": "円", "benchmark_min": 400000000, "benchmark_max": 650000000, "level": "KPI-L1"},
+            {"id": "cmd_017", "name": "楽天売上", "target": 350000000, "unit": "円", "benchmark_min": 250000000, "benchmark_max": 450000000, "level": "KPI-L1"},
+            {"id": "cmd_018", "name": "自社EC売上", "target": 300000000, "unit": "円", "benchmark_min": 200000000, "benchmark_max": 400000000, "level": "KPI-L1"},
+            {"id": "cmd_019", "name": "B2B売上", "target": 100000000, "unit": "円", "benchmark_min": 50000000, "benchmark_max": 150000000, "level": "KPI-L1"},
+            {"id": "cmd_020", "name": "Amazon構成比", "target": 42, "unit": "%", "benchmark_min": 30, "benchmark_max": 50, "level": "KPI-L2"},
+            {"id": "cmd_021", "name": "楽天構成比", "target": 27, "unit": "%", "benchmark_min": 20, "benchmark_max": 35, "level": "KPI-L2"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "acquisition",
+      "name": "ACQUISITION",
+      "icon": "📈",
+      "description": "広告・SEO・集客",
+      "categories": [
+        {
+          "name": "集客KGI",
+          "kpis": [
+            {"id": "acq_001", "name": "広告経由売上", "target": 650000000, "unit": "円", "benchmark_min": 500000000, "benchmark_max": 800000000, "level": "KGI"},
+            {"id": "acq_002", "name": "広告経由新規顧客数", "target": 26000, "unit": "人", "benchmark_min": 20000, "benchmark_max": 35000, "level": "KGI"},
+            {"id": "acq_003", "name": "総広告費", "target": 144000000, "unit": "円", "benchmark_min": 100000000, "benchmark_max": 180000000, "level": "KPI-L1"},
+            {"id": "acq_004", "name": "全体ROAS", "target": 450, "unit": "%", "benchmark_min": 300, "benchmark_max": 600, "level": "KPI-L1"},
+            {"id": "acq_005", "name": "平均CPA", "target": 5538, "unit": "円", "benchmark_min": 3000, "benchmark_max": 8000, "level": "KPI-L1"}
+          ]
+        },
+        {
+          "name": "Google Ads",
+          "kpis": [
+            {"id": "acq_006", "name": "Google Ads年間予算", "target": 35000000, "unit": "円", "benchmark_min": 25000000, "benchmark_max": 50000000, "level": "KPI-L1"},
+            {"id": "acq_007", "name": "Google Ads売上", "target": 175000000, "unit": "円", "benchmark_min": 125000000, "benchmark_max": 225000000, "level": "KPI-L1"},
+            {"id": "acq_008", "name": "Google Ads ROAS", "target": 500, "unit": "%", "benchmark_min": 350, "benchmark_max": 650, "level": "KPI-L1"},
+            {"id": "acq_009", "name": "Google Ads CPA", "target": 5000, "unit": "円", "benchmark_min": 3000, "benchmark_max": 7000, "level": "KPI-L2"},
+            {"id": "acq_010", "name": "Google検索CTR", "target": 4, "unit": "%", "benchmark_min": 2, "benchmark_max": 6, "level": "KPI-L2"},
+            {"id": "acq_011", "name": "Google検索CVR", "target": 3, "unit": "%", "benchmark_min": 1.5, "benchmark_max": 5, "level": "KPI-L2"},
+            {"id": "acq_012", "name": "品質スコア", "target": 7, "unit": "点", "benchmark_min": 5, "benchmark_max": 10, "level": "KPI-L3"}
+          ]
+        },
+        {
+          "name": "Meta Ads",
+          "kpis": [
+            {"id": "acq_013", "name": "Meta Ads年間予算", "target": 28000000, "unit": "円", "benchmark_min": 20000000, "benchmark_max": 40000000, "level": "KPI-L1"},
+            {"id": "acq_014", "name": "Meta Ads売上", "target": 126000000, "unit": "円", "benchmark_min": 90000000, "benchmark_max": 160000000, "level": "KPI-L1"},
+            {"id": "acq_015", "name": "Meta Ads ROAS", "target": 450, "unit": "%", "benchmark_min": 300, "benchmark_max": 600, "level": "KPI-L1"},
+            {"id": "acq_016", "name": "Meta Ads CPA", "target": 5600, "unit": "円", "benchmark_min": 3500, "benchmark_max": 8000, "level": "KPI-L2"},
+            {"id": "acq_017", "name": "Meta CTR", "target": 1.5, "unit": "%", "benchmark_min": 0.8, "benchmark_max": 2.5, "level": "KPI-L2"},
+            {"id": "acq_018", "name": "Meta CVR", "target": 2, "unit": "%", "benchmark_min": 1, "benchmark_max": 4, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "Amazon Ads",
+          "kpis": [
+            {"id": "acq_019", "name": "Amazon Ads年間予算", "target": 40000000, "unit": "円", "benchmark_min": 30000000, "benchmark_max": 55000000, "level": "KPI-L1"},
+            {"id": "acq_020", "name": "Amazon Ads売上", "target": 200000000, "unit": "円", "benchmark_min": 150000000, "benchmark_max": 250000000, "level": "KPI-L1"},
+            {"id": "acq_021", "name": "Amazon Ads ROAS", "target": 500, "unit": "%", "benchmark_min": 350, "benchmark_max": 650, "level": "KPI-L1"},
+            {"id": "acq_022", "name": "SP Manual ACoS", "target": 18, "unit": "%", "benchmark_min": 10, "benchmark_max": 25, "level": "KPI-L2"},
+            {"id": "acq_023", "name": "SP Auto ACoS", "target": 25, "unit": "%", "benchmark_min": 15, "benchmark_max": 35, "level": "KPI-L2"},
+            {"id": "acq_024", "name": "Amazon CVR", "target": 15, "unit": "%", "benchmark_min": 10, "benchmark_max": 20, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "楽天RPP",
+          "kpis": [
+            {"id": "acq_025", "name": "楽天RPP年間予算", "target": 25000000, "unit": "円", "benchmark_min": 18000000, "benchmark_max": 35000000, "level": "KPI-L1"},
+            {"id": "acq_026", "name": "楽天RPP売上", "target": 100000000, "unit": "円", "benchmark_min": 70000000, "benchmark_max": 130000000, "level": "KPI-L1"},
+            {"id": "acq_027", "name": "楽天RPP ROAS", "target": 400, "unit": "%", "benchmark_min": 280, "benchmark_max": 520, "level": "KPI-L1"},
+            {"id": "acq_028", "name": "楽天RPP ACoS", "target": 18, "unit": "%", "benchmark_min": 12, "benchmark_max": 25, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "SEO/オーガニック",
+          "kpis": [
+            {"id": "acq_029", "name": "オーガニック売上", "target": 400000000, "unit": "円", "benchmark_min": 300000000, "benchmark_max": 500000000, "level": "KGI"},
+            {"id": "acq_030", "name": "年間オーガニックセッション", "target": 5200000, "unit": "セッション", "benchmark_min": 3500000, "benchmark_max": 7000000, "level": "KPI-L1"},
+            {"id": "acq_031", "name": "オーガニックCVR", "target": 3.5, "unit": "%", "benchmark_min": 2, "benchmark_max": 5, "level": "KPI-L1"},
+            {"id": "acq_032", "name": "検索順位（主要KW）", "target": 3, "unit": "位以内", "benchmark_min": 1, "benchmark_max": 10, "level": "KPI-L2"},
+            {"id": "acq_033", "name": "インデックス数", "target": 500, "unit": "ページ", "benchmark_min": 200, "benchmark_max": 1000, "level": "KPI-L2"},
+            {"id": "acq_034", "name": "ドメインランク", "target": 50, "unit": "DR", "benchmark_min": 30, "benchmark_max": 70, "level": "KPI-L2"},
+            {"id": "acq_035", "name": "LCP", "target": 2.5, "unit": "秒以下", "benchmark_min": 1.5, "benchmark_max": 4, "level": "KPI-L3"},
+            {"id": "acq_036", "name": "FID", "target": 100, "unit": "ms以下", "benchmark_min": 50, "benchmark_max": 300, "level": "KPI-L3"},
+            {"id": "acq_037", "name": "CLS", "target": 0.1, "unit": "以下", "benchmark_min": 0.05, "benchmark_max": 0.25, "level": "KPI-L3"},
+            {"id": "acq_038", "name": "被リンク数", "target": 2000, "unit": "件", "benchmark_min": 500, "benchmark_max": 5000, "level": "KPI-L3"}
+          ]
+        },
+        {
+          "name": "LP/フォーム最適化",
+          "kpis": [
+            {"id": "acq_039", "name": "LP経由売上", "target": 300000000, "unit": "円", "benchmark_min": 200000000, "benchmark_max": 400000000, "level": "KGI"},
+            {"id": "acq_040", "name": "LP CVR", "target": 5, "unit": "%", "benchmark_min": 3, "benchmark_max": 8, "level": "KPI-L1"},
+            {"id": "acq_041", "name": "カート購入完了率", "target": 70, "unit": "%", "benchmark_min": 50, "benchmark_max": 85, "level": "KPI-L1"},
+            {"id": "acq_042", "name": "間接LP→LP遷移率", "target": 40, "unit": "%", "benchmark_min": 25, "benchmark_max": 55, "level": "KPI-L2"},
+            {"id": "acq_043", "name": "LP直帰率", "target": 40, "unit": "%以下", "benchmark_min": 25, "benchmark_max": 60, "level": "KPI-L2"},
+            {"id": "acq_044", "name": "チャット型フォーム起動率", "target": 15, "unit": "%", "benchmark_min": 8, "benchmark_max": 25, "level": "KPI-L2"},
+            {"id": "acq_045", "name": "チャット型フォームCVR", "target": 25, "unit": "%", "benchmark_min": 15, "benchmark_max": 40, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "アップセル/離脱防止",
+          "kpis": [
+            {"id": "acq_046", "name": "アップセル/クロスセル売上", "target": 150000000, "unit": "円", "benchmark_min": 100000000, "benchmark_max": 200000000, "level": "KGI"},
+            {"id": "acq_047", "name": "サンクスページアップセル率", "target": 8, "unit": "%", "benchmark_min": 4, "benchmark_max": 15, "level": "KPI-L1"},
+            {"id": "acq_048", "name": "サンクスページクロスセル率", "target": 12, "unit": "%", "benchmark_min": 6, "benchmark_max": 20, "level": "KPI-L1"},
+            {"id": "acq_049", "name": "離脱回収売上", "target": 80000000, "unit": "円", "benchmark_min": 50000000, "benchmark_max": 120000000, "level": "KGI"},
+            {"id": "acq_050", "name": "離脱ポップアップ表示率", "target": 30, "unit": "%", "benchmark_min": 20, "benchmark_max": 45, "level": "KPI-L2"},
+            {"id": "acq_051", "name": "離脱ポップアップCVR", "target": 5, "unit": "%", "benchmark_min": 2, "benchmark_max": 10, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "アフィリエイト/インフルエンサー",
+          "kpis": [
+            {"id": "acq_052", "name": "パートナー経由売上", "target": 200000000, "unit": "円", "benchmark_min": 150000000, "benchmark_max": 280000000, "level": "KGI"},
+            {"id": "acq_053", "name": "アフィリエイト売上", "target": 120000000, "unit": "円", "benchmark_min": 80000000, "benchmark_max": 160000000, "level": "KPI-L1"},
+            {"id": "acq_054", "name": "インフルエンサー売上", "target": 80000000, "unit": "円", "benchmark_min": 50000000, "benchmark_max": 120000000, "level": "KPI-L1"},
+            {"id": "acq_055", "name": "アクティブパートナー数", "target": 200, "unit": "人", "benchmark_min": 100, "benchmark_max": 350, "level": "KPI-L2"},
+            {"id": "acq_056", "name": "EPC", "target": 300, "unit": "円", "benchmark_min": 150, "benchmark_max": 500, "level": "KPI-L2"},
+            {"id": "acq_057", "name": "パートナーCVR", "target": 4, "unit": "%", "benchmark_min": 2, "benchmark_max": 7, "level": "KPI-L2"},
+            {"id": "acq_058", "name": "インフルエンサー契約数", "target": 50, "unit": "人/年", "benchmark_min": 25, "benchmark_max": 100, "level": "KPI-L3"},
+            {"id": "acq_059", "name": "インフルエンサーROI", "target": 300, "unit": "%", "benchmark_min": 150, "benchmark_max": 500, "level": "KPI-L3"},
+            {"id": "acq_060", "name": "UGC生成数", "target": 1000, "unit": "件/年", "benchmark_min": 500, "benchmark_max": 2000, "level": "KPI-L3"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "creative",
+      "name": "CREATIVE",
+      "icon": "✏️",
+      "description": "コンテンツ・SNS",
+      "categories": [
+        {
+          "name": "コンテンツKGI",
+          "kpis": [
+            {"id": "cre_001", "name": "ブランド認知度", "target": 30, "unit": "%", "benchmark_min": 15, "benchmark_max": 50, "level": "KGI"},
+            {"id": "cre_002", "name": "年間コンテンツ制作数", "target": 2400, "unit": "件", "benchmark_min": 1500, "benchmark_max": 3500, "level": "KGI"},
+            {"id": "cre_003", "name": "商品コンテンツ数", "target": 400, "unit": "件/年", "benchmark_min": 250, "benchmark_max": 600, "level": "KPI-L1"},
+            {"id": "cre_004", "name": "マーケコンテンツ数", "target": 200, "unit": "件/年", "benchmark_min": 100, "benchmark_max": 350, "level": "KPI-L1"},
+            {"id": "cre_005", "name": "SNSコンテンツ数", "target": 1800, "unit": "件/年", "benchmark_min": 1200, "benchmark_max": 2500, "level": "KPI-L1"}
+          ]
+        },
+        {
+          "name": "商品ページKPI",
+          "kpis": [
+            {"id": "cre_006", "name": "商品ページCVR（全体）", "target": 4, "unit": "%", "benchmark_min": 2, "benchmark_max": 6, "level": "KGI"},
+            {"id": "cre_007", "name": "Amazon CVR", "target": 12, "unit": "%", "benchmark_min": 8, "benchmark_max": 18, "level": "KPI-L1"},
+            {"id": "cre_008", "name": "楽天CVR", "target": 8, "unit": "%", "benchmark_min": 5, "benchmark_max": 12, "level": "KPI-L1"},
+            {"id": "cre_009", "name": "自社EC CVR", "target": 3.5, "unit": "%", "benchmark_min": 2, "benchmark_max": 6, "level": "KPI-L1"},
+            {"id": "cre_010", "name": "商品ページ滞在時間", "target": 180, "unit": "秒以上", "benchmark_min": 90, "benchmark_max": 300, "level": "KPI-L2"},
+            {"id": "cre_011", "name": "画像閲覧数", "target": 4, "unit": "枚以上", "benchmark_min": 2, "benchmark_max": 7, "level": "KPI-L2"},
+            {"id": "cre_012", "name": "スクロール深度", "target": 80, "unit": "%以上", "benchmark_min": 50, "benchmark_max": 95, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "SNS KPI",
+          "kpis": [
+            {"id": "cre_013", "name": "総フォロワー数", "target": 300000, "unit": "人", "benchmark_min": 150000, "benchmark_max": 500000, "level": "KGI"},
+            {"id": "cre_014", "name": "SNS経由売上", "target": 100000000, "unit": "円", "benchmark_min": 60000000, "benchmark_max": 150000000, "level": "KGI"},
+            {"id": "cre_015", "name": "Instagramフォロワー", "target": 150000, "unit": "人", "benchmark_min": 80000, "benchmark_max": 250000, "level": "KPI-L1"},
+            {"id": "cre_016", "name": "Twitter/Xフォロワー", "target": 80000, "unit": "人", "benchmark_min": 40000, "benchmark_max": 150000, "level": "KPI-L1"},
+            {"id": "cre_017", "name": "TikTokフォロワー", "target": 50000, "unit": "人", "benchmark_min": 20000, "benchmark_max": 100000, "level": "KPI-L1"},
+            {"id": "cre_018", "name": "LINE公式友だち", "target": 100000, "unit": "人", "benchmark_min": 50000, "benchmark_max": 200000, "level": "KPI-L1"},
+            {"id": "cre_019", "name": "エンゲージメント率（全体）", "target": 5, "unit": "%", "benchmark_min": 2, "benchmark_max": 8, "level": "KPI-L1"},
+            {"id": "cre_020", "name": "Instagram保存率", "target": 3, "unit": "%", "benchmark_min": 1, "benchmark_max": 5, "level": "KPI-L2"},
+            {"id": "cre_021", "name": "リール再生数", "target": 100000, "unit": "/投稿", "benchmark_min": 30000, "benchmark_max": 300000, "level": "KPI-L2"},
+            {"id": "cre_022", "name": "UGC投稿数", "target": 500, "unit": "件/月", "benchmark_min": 200, "benchmark_max": 1000, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "広告クリエイティブKPI",
+          "kpis": [
+            {"id": "cre_023", "name": "A/Bテスト勝率", "target": 30, "unit": "%", "benchmark_min": 20, "benchmark_max": 45, "level": "KPI-L1"},
+            {"id": "cre_024", "name": "A/Bテスト実施数", "target": 8, "unit": "回/月", "benchmark_min": 4, "benchmark_max": 15, "level": "KPI-L2"},
+            {"id": "cre_025", "name": "クリエイティブ更新頻度", "target": 4, "unit": "回/月", "benchmark_min": 2, "benchmark_max": 8, "level": "KPI-L2"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "insight",
+      "name": "INSIGHT",
+      "icon": "📊",
+      "description": "分析・予測",
+      "categories": [
+        {
+          "name": "顧客分析KGI",
+          "kpis": [
+            {"id": "ins_001", "name": "LTV", "target": 15000, "unit": "円", "benchmark_min": 8000, "benchmark_max": 25000, "level": "KGI"},
+            {"id": "ins_002", "name": "LTV/CAC比率", "target": 3.0, "unit": "倍", "benchmark_min": 2.0, "benchmark_max": 5.0, "level": "KGI"},
+            {"id": "ins_003", "name": "年間購入回数", "target": 2.0, "unit": "回", "benchmark_min": 1.3, "benchmark_max": 3.0, "level": "KPI-L1"},
+            {"id": "ins_004", "name": "平均客単価", "target": 7500, "unit": "円", "benchmark_min": 5000, "benchmark_max": 12000, "level": "KPI-L1"},
+            {"id": "ins_005", "name": "顧客継続率", "target": 40, "unit": "%", "benchmark_min": 25, "benchmark_max": 55, "level": "KPI-L1"},
+            {"id": "ins_006", "name": "F2転換率", "target": 30, "unit": "%", "benchmark_min": 18, "benchmark_max": 45, "level": "KPI-L2"},
+            {"id": "ins_007", "name": "F3+転換率", "target": 50, "unit": "%", "benchmark_min": 35, "benchmark_max": 65, "level": "KPI-L2"},
+            {"id": "ins_008", "name": "購入間隔", "target": 45, "unit": "日", "benchmark_min": 30, "benchmark_max": 90, "level": "KPI-L2"},
+            {"id": "ins_009", "name": "NPS", "target": 50, "unit": "以上", "benchmark_min": 30, "benchmark_max": 70, "level": "KPI-L3"},
+            {"id": "ins_010", "name": "顧客満足度", "target": 4.5, "unit": "/5.0", "benchmark_min": 4.0, "benchmark_max": 4.8, "level": "KPI-L3"}
+          ]
+        },
+        {
+          "name": "予測分析KPI",
+          "kpis": [
+            {"id": "ins_011", "name": "売上予測精度（MAPE）", "target": 10, "unit": "%以下", "benchmark_min": 5, "benchmark_max": 20, "level": "KPI-L1"},
+            {"id": "ins_012", "name": "需要予測精度（MAPE）", "target": 15, "unit": "%以下", "benchmark_min": 8, "benchmark_max": 25, "level": "KPI-L1"},
+            {"id": "ins_013", "name": "LTV予測誤差", "target": 20, "unit": "%以下", "benchmark_min": 10, "benchmark_max": 35, "level": "KPI-L1"},
+            {"id": "ins_014", "name": "離脱予測AUC", "target": 0.8, "unit": "以上", "benchmark_min": 0.7, "benchmark_max": 0.95, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "異常検知KPI",
+          "kpis": [
+            {"id": "ins_015", "name": "異常検知時間", "target": 2, "unit": "時間以内", "benchmark_min": 0.5, "benchmark_max": 6, "level": "KPI-L1"},
+            {"id": "ins_016", "name": "データドリブン意思決定率", "target": 90, "unit": "%", "benchmark_min": 70, "benchmark_max": 98, "level": "KGI"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "engagement",
+      "name": "ENGAGEMENT",
+      "icon": "💌",
+      "description": "CRM・メール・CS",
+      "categories": [
+        {
+          "name": "顧客エンゲージメントKGI",
+          "kpis": [
+            {"id": "eng_001", "name": "リピート売上", "target": 520000000, "unit": "円", "benchmark_min": 400000000, "benchmark_max": 650000000, "level": "KGI"},
+            {"id": "eng_002", "name": "リピート顧客数", "target": 34667, "unit": "人", "benchmark_min": 25000, "benchmark_max": 45000, "level": "KGI"},
+            {"id": "eng_003", "name": "リピート率", "target": 40, "unit": "%", "benchmark_min": 28, "benchmark_max": 55, "level": "KGI"}
+          ]
+        },
+        {
+          "name": "F転換率詳細",
+          "kpis": [
+            {"id": "eng_004", "name": "F2転換率", "target": 30, "unit": "%", "benchmark_min": 18, "benchmark_max": 45, "level": "KPI-L1"},
+            {"id": "eng_005", "name": "F3転換率", "target": 50, "unit": "%", "benchmark_min": 35, "benchmark_max": 65, "level": "KPI-L1"},
+            {"id": "eng_006", "name": "F4+転換率", "target": 70, "unit": "%", "benchmark_min": 55, "benchmark_max": 85, "level": "KPI-L1"},
+            {"id": "eng_007", "name": "F2購入リーセンシー", "target": 30, "unit": "日以内", "benchmark_min": 14, "benchmark_max": 60, "level": "KPI-L2"},
+            {"id": "eng_008", "name": "F3購入リーセンシー", "target": 25, "unit": "日以内", "benchmark_min": 10, "benchmark_max": 45, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "メールマーケティング",
+          "kpis": [
+            {"id": "eng_009", "name": "メール経由売上", "target": 120000000, "unit": "円", "benchmark_min": 80000000, "benchmark_max": 180000000, "level": "KGI"},
+            {"id": "eng_010", "name": "配信リスト数", "target": 500000, "unit": "件", "benchmark_min": 300000, "benchmark_max": 800000, "level": "KPI-L1"},
+            {"id": "eng_011", "name": "平均開封率", "target": 25, "unit": "%", "benchmark_min": 15, "benchmark_max": 35, "level": "KPI-L1"},
+            {"id": "eng_012", "name": "平均クリック率", "target": 4, "unit": "%", "benchmark_min": 2, "benchmark_max": 7, "level": "KPI-L1"},
+            {"id": "eng_013", "name": "メール経由CVR", "target": 2, "unit": "%", "benchmark_min": 1, "benchmark_max": 4, "level": "KPI-L2"},
+            {"id": "eng_014", "name": "配信解除率", "target": 0.3, "unit": "%以下", "benchmark_min": 0.1, "benchmark_max": 0.8, "level": "KPI-L2"},
+            {"id": "eng_015", "name": "到達率", "target": 99, "unit": "%以上", "benchmark_min": 95, "benchmark_max": 100, "level": "KPI-L3"}
+          ]
+        },
+        {
+          "name": "LINE公式",
+          "kpis": [
+            {"id": "eng_016", "name": "LINE経由売上", "target": 80000000, "unit": "円", "benchmark_min": 50000000, "benchmark_max": 120000000, "level": "KGI"},
+            {"id": "eng_017", "name": "友だち数", "target": 100000, "unit": "人", "benchmark_min": 60000, "benchmark_max": 180000, "level": "KPI-L1"},
+            {"id": "eng_018", "name": "ブロック率", "target": 10, "unit": "%以下", "benchmark_min": 5, "benchmark_max": 20, "level": "KPI-L1"},
+            {"id": "eng_019", "name": "開封率", "target": 60, "unit": "%", "benchmark_min": 40, "benchmark_max": 80, "level": "KPI-L1"},
+            {"id": "eng_020", "name": "クリック率", "target": 15, "unit": "%", "benchmark_min": 8, "benchmark_max": 25, "level": "KPI-L2"},
+            {"id": "eng_021", "name": "LINE経由CVR", "target": 3, "unit": "%", "benchmark_min": 1.5, "benchmark_max": 6, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "定期購入",
+          "kpis": [
+            {"id": "eng_022", "name": "定期顧客LTV", "target": 45000, "unit": "円", "benchmark_min": 25000, "benchmark_max": 70000, "level": "KGI"},
+            {"id": "eng_023", "name": "定期平均継続月数", "target": 8, "unit": "ヶ月", "benchmark_min": 4, "benchmark_max": 14, "level": "KPI-L1"},
+            {"id": "eng_024", "name": "定期1ヶ月継続率", "target": 90, "unit": "%", "benchmark_min": 80, "benchmark_max": 96, "level": "KPI-L2"},
+            {"id": "eng_025", "name": "定期3ヶ月継続率", "target": 75, "unit": "%", "benchmark_min": 60, "benchmark_max": 88, "level": "KPI-L2"},
+            {"id": "eng_026", "name": "定期6ヶ月継続率", "target": 60, "unit": "%", "benchmark_min": 45, "benchmark_max": 78, "level": "KPI-L2"},
+            {"id": "eng_027", "name": "定期解約抑止率", "target": 30, "unit": "%", "benchmark_min": 15, "benchmark_max": 50, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "カスタマーサポート",
+          "kpis": [
+            {"id": "eng_028", "name": "顧客満足度（CSAT）", "target": 4.5, "unit": "/5.0", "benchmark_min": 4.0, "benchmark_max": 4.9, "level": "KGI"},
+            {"id": "eng_029", "name": "NPS", "target": 50, "unit": "以上", "benchmark_min": 30, "benchmark_max": 70, "level": "KGI"},
+            {"id": "eng_030", "name": "初回応答時間", "target": 2, "unit": "時間以内", "benchmark_min": 0.5, "benchmark_max": 8, "level": "KPI-L1"},
+            {"id": "eng_031", "name": "解決時間", "target": 24, "unit": "時間以内", "benchmark_min": 4, "benchmark_max": 48, "level": "KPI-L1"},
+            {"id": "eng_032", "name": "一次解決率", "target": 80, "unit": "%", "benchmark_min": 65, "benchmark_max": 92, "level": "KPI-L1"},
+            {"id": "eng_033", "name": "問い合わせ件数", "target": 3000, "unit": "件/月", "benchmark_min": 1500, "benchmark_max": 5000, "level": "KPI-L2"},
+            {"id": "eng_034", "name": "エスカレーション率", "target": 5, "unit": "%以下", "benchmark_min": 2, "benchmark_max": 12, "level": "KPI-L2"},
+            {"id": "eng_035", "name": "再問い合わせ率", "target": 10, "unit": "%以下", "benchmark_min": 4, "benchmark_max": 18, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "レビュー/口コミ",
+          "kpis": [
+            {"id": "eng_036", "name": "平均レビュー評価", "target": 4.3, "unit": "以上", "benchmark_min": 3.8, "benchmark_max": 4.7, "level": "KGI"},
+            {"id": "eng_037", "name": "レビュー数", "target": 20000, "unit": "件/年", "benchmark_min": 10000, "benchmark_max": 35000, "level": "KPI-L1"},
+            {"id": "eng_038", "name": "レビュー獲得率", "target": 25, "unit": "%", "benchmark_min": 12, "benchmark_max": 40, "level": "KPI-L1"},
+            {"id": "eng_039", "name": "ネガティブレビュー対応率", "target": 100, "unit": "%", "benchmark_min": 90, "benchmark_max": 100, "level": "KPI-L2"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "name": "OPERATIONS",
+      "icon": "⚙️",
+      "description": "CVR・価格・在庫",
+      "categories": [
+        {
+          "name": "運用KGI",
+          "kpis": [
+            {"id": "ops_001", "name": "サイト全体CVR", "target": 4.0, "unit": "%", "benchmark_min": 2.5, "benchmark_max": 6.0, "level": "KGI"},
+            {"id": "ops_002", "name": "カート追加率", "target": 15, "unit": "%", "benchmark_min": 10, "benchmark_max": 22, "level": "KPI-L1"},
+            {"id": "ops_003", "name": "カート離脱率", "target": 70, "unit": "%以下", "benchmark_min": 55, "benchmark_max": 80, "level": "KPI-L1"},
+            {"id": "ops_004", "name": "決済完了率", "target": 85, "unit": "%", "benchmark_min": 70, "benchmark_max": 95, "level": "KPI-L1"},
+            {"id": "ops_005", "name": "A/Bテスト実施数", "target": 8, "unit": "回/月", "benchmark_min": 4, "benchmark_max": 15, "level": "KPI-L2"},
+            {"id": "ops_006", "name": "テスト勝率", "target": 30, "unit": "%", "benchmark_min": 20, "benchmark_max": 45, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "価格最適化",
+          "kpis": [
+            {"id": "ops_007", "name": "粗利率", "target": 65, "unit": "%", "benchmark_min": 55, "benchmark_max": 75, "level": "KGI"},
+            {"id": "ops_008", "name": "平均客単価", "target": 7500, "unit": "円", "benchmark_min": 5000, "benchmark_max": 12000, "level": "KGI"},
+            {"id": "ops_009", "name": "Amazon Buy Box率", "target": 95, "unit": "%", "benchmark_min": 85, "benchmark_max": 99, "level": "KPI-L1"},
+            {"id": "ops_010", "name": "値引き率", "target": 8, "unit": "%以下", "benchmark_min": 3, "benchmark_max": 15, "level": "KPI-L2"},
+            {"id": "ops_011", "name": "競合価格差", "target": 5, "unit": "%以内", "benchmark_min": 0, "benchmark_max": 12, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "在庫管理",
+          "kpis": [
+            {"id": "ops_012", "name": "在庫回転日数", "target": 45, "unit": "日", "benchmark_min": 25, "benchmark_max": 75, "level": "KGI"},
+            {"id": "ops_013", "name": "在庫金額", "target": 150000000, "unit": "円", "benchmark_min": 100000000, "benchmark_max": 200000000, "level": "KGI"},
+            {"id": "ops_014", "name": "欠品率", "target": 2, "unit": "%以下", "benchmark_min": 0.5, "benchmark_max": 5, "level": "KPI-L1"},
+            {"id": "ops_015", "name": "欠品機会損失", "target": 20000000, "unit": "円以下/年", "benchmark_min": 5000000, "benchmark_max": 50000000, "level": "KPI-L1"},
+            {"id": "ops_016", "name": "過剰在庫率", "target": 5, "unit": "%以下", "benchmark_min": 2, "benchmark_max": 12, "level": "KPI-L1"},
+            {"id": "ops_017", "name": "発注精度", "target": 90, "unit": "%", "benchmark_min": 75, "benchmark_max": 98, "level": "KPI-L2"},
+            {"id": "ops_018", "name": "安全在庫日数", "target": 7, "unit": "日", "benchmark_min": 3, "benchmark_max": 14, "level": "KPI-L2"},
+            {"id": "ops_019", "name": "廃棄率", "target": 1, "unit": "%以下", "benchmark_min": 0.2, "benchmark_max": 3, "level": "KPI-L3"},
+            {"id": "ops_020", "name": "在庫期限切れ率", "target": 0.5, "unit": "%以下", "benchmark_min": 0.1, "benchmark_max": 2, "level": "KPI-L3"}
+          ]
+        },
+        {
+          "name": "CS詳細（運用品質）",
+          "kpis": [
+            {"id": "ops_021", "name": "CS品質スコア", "target": 95, "unit": "点以上", "benchmark_min": 85, "benchmark_max": 100, "level": "KGI"},
+            {"id": "ops_022", "name": "入電数", "target": 1500, "unit": "件/月", "benchmark_min": 800, "benchmark_max": 2500, "level": "KPI-L1"},
+            {"id": "ops_023", "name": "入電応答率", "target": 95, "unit": "%以上", "benchmark_min": 85, "benchmark_max": 99, "level": "KPI-L1"},
+            {"id": "ops_024", "name": "平均応答速度（ASA）", "target": 20, "unit": "秒以内", "benchmark_min": 10, "benchmark_max": 45, "level": "KPI-L1"},
+            {"id": "ops_025", "name": "CPH", "target": 8, "unit": "件以上", "benchmark_min": 5, "benchmark_max": 12, "level": "KPI-L2"},
+            {"id": "ops_026", "name": "CPC", "target": 500, "unit": "円以下", "benchmark_min": 250, "benchmark_max": 900, "level": "KPI-L2"},
+            {"id": "ops_027", "name": "VOC収集数", "target": 500, "unit": "件/月", "benchmark_min": 200, "benchmark_max": 1000, "level": "KPI-L2"},
+            {"id": "ops_028", "name": "VOC問題解消数", "target": 20, "unit": "件/月", "benchmark_min": 8, "benchmark_max": 40, "level": "KPI-L2"}
+          ]
+        },
+        {
+          "name": "フルフィルメント",
+          "kpis": [
+            {"id": "ops_029", "name": "フルフィルメント品質スコア", "target": 99, "unit": "%以上", "benchmark_min": 95, "benchmark_max": 100, "level": "KGI"},
+            {"id": "ops_030", "name": "配送コスト率", "target": 8, "unit": "%以下", "benchmark_min": 5, "benchmark_max": 12, "level": "KGI"},
+            {"id": "ops_031", "name": "平均配送日数", "target": 2, "unit": "日以内", "benchmark_min": 1, "benchmark_max": 4, "level": "KPI-L1"},
+            {"id": "ops_032", "name": "配送遅延率", "target": 1, "unit": "%以下", "benchmark_min": 0.2, "benchmark_max": 3, "level": "KPI-L1"},
+            {"id": "ops_033", "name": "誤配送率", "target": 0.05, "unit": "%以下", "benchmark_min": 0.01, "benchmark_max": 0.2, "level": "KPI-L1"},
+            {"id": "ops_034", "name": "規定リードタイム内出荷完了率", "target": 98, "unit": "%以上", "benchmark_min": 92, "benchmark_max": 100, "level": "KPI-L2"},
+            {"id": "ops_035", "name": "汚破損率", "target": 0.1, "unit": "%以下", "benchmark_min": 0.02, "benchmark_max": 0.3, "level": "KPI-L2"},
+            {"id": "ops_036", "name": "PPM（誤出荷発生率）", "target": 100, "unit": "以下", "benchmark_min": 20, "benchmark_max": 300, "level": "KPI-L2"},
+            {"id": "ops_037", "name": "返品率", "target": 3, "unit": "%以下", "benchmark_min": 1, "benchmark_max": 6, "level": "KPI-L2"},
+            {"id": "ops_038", "name": "返金率", "target": 2, "unit": "%以下", "benchmark_min": 0.5, "benchmark_max": 4, "level": "KPI-L3"},
+            {"id": "ops_039", "name": "FBA活用率", "target": 70, "unit": "%", "benchmark_min": 50, "benchmark_max": 90, "level": "KPI-L2"},
+            {"id": "ops_040", "name": "翌日配送率", "target": 50, "unit": "%", "benchmark_min": 30, "benchmark_max": 75, "level": "KPI-L2"}
+          ]
+        }
+      ]
+    }
+  ],
+  "benchmarks": {
+    "description": "業界ベンチマーク（D2C/EC）",
+    "sources": ["各種業界レポート", "自社調査"],
+    "notes": "benchmark_min〜benchmark_maxが妥当な範囲。この範囲外は要検討。"
+  }
+}

@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D2C KPI Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-500: #6b7280;
+            --gray-700: #374151;
+            --gray-900: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--gray-100);
+            color: var(--gray-900);
+            line-height: 1.5;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            opacity: 0.9;
+            margin-top: 0.25rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 0.75rem 1.25rem;
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+            font-weight: 500;
+        }
+
+        .card-icon {
+            font-size: 1.5rem;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        .card-subtitle {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+            margin-top: 0.25rem;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            margin-top: 1rem;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-fill.success { background: var(--success); }
+        .progress-fill.warning { background: var(--warning); }
+        .progress-fill.danger { background: var(--danger); }
+
+        .agent-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .agent-card {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .agent-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .agent-card.selected {
+            border-color: var(--primary);
+        }
+
+        .agent-card .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .agent-card .name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .agent-card .score {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .agent-card .status {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .status.excellent { background: #d1fae5; color: #065f46; }
+        .status.good { background: #dbeafe; color: #1e40af; }
+        .status.warning { background: #fef3c7; color: #92400e; }
+        .status.danger { background: #fee2e2; color: #991b1b; }
+
+        .kpi-table {
+            background: white;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .kpi-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .kpi-table th {
+            background: var(--gray-50);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--gray-700);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .kpi-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .kpi-table tr:hover {
+            background: var(--gray-50);
+        }
+
+        .kpi-name {
+            font-weight: 500;
+        }
+
+        .kpi-level {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .kpi-level.kgi { background: #fef3c7; color: #92400e; }
+        .kpi-level.l1 { background: #dbeafe; color: #1e40af; }
+        .kpi-level.l2 { background: #d1fae5; color: #065f46; }
+        .kpi-level.l3 { background: var(--gray-200); color: var(--gray-700); }
+
+        .achievement {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .achievement-bar {
+            flex: 1;
+            height: 6px;
+            background: var(--gray-200);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .achievement-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .reality-check {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .reality-icon {
+            font-size: 1.25rem;
+        }
+
+        .alert-section {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .alert-list {
+            list-style: none;
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .alert-item.warning { background: #fef3c7; }
+        .alert-item.danger { background: #fee2e2; }
+        .alert-item.unrealistic { background: #f3e8ff; }
+
+        .input-section {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .input-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .input-field label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        .input-field input {
+            padding: 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .input-field input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .card-value {
+                font-size: 1.5rem;
+            }
+
+            .kpi-table {
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>D2C KPI Management Dashboard</h1>
+        <p>目標売上 13億円 | 261 KPIs | 6 Agents</p>
+    </header>
+
+    <div class="container">
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="summary">サマリー</button>
+            <button class="tab" data-tab="input">実績入力</button>
+            <button class="tab" data-tab="commander">🎯 COMMANDER</button>
+            <button class="tab" data-tab="acquisition">📈 ACQUISITION</button>
+            <button class="tab" data-tab="creative">✏️ CREATIVE</button>
+            <button class="tab" data-tab="insight">📊 INSIGHT</button>
+            <button class="tab" data-tab="engagement">💌 ENGAGEMENT</button>
+            <button class="tab" data-tab="operations">⚙️ OPERATIONS</button>
+        </div>
+
+        <!-- Summary Tab -->
+        <div id="summary" class="tab-content">
+            <!-- KGI Cards -->
+            <div class="summary-cards">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">年商</span>
+                        <span class="card-icon">💰</span>
+                    </div>
+                    <div class="card-value" id="revenue-value">0億円</div>
+                    <div class="card-subtitle">目標: 13億円</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill success" id="revenue-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">営業利益</span>
+                        <span class="card-icon">📈</span>
+                    </div>
+                    <div class="card-value" id="profit-value">0億円</div>
+                    <div class="card-subtitle">目標: 1.95億円（15%）</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill success" id="profit-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">LTV÷CPA</span>
+                        <span class="card-icon">💎</span>
+                    </div>
+                    <div class="card-value" id="ltv-cpa-value">0倍</div>
+                    <div class="card-subtitle">目標: 3.0倍以上</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill warning" id="ltv-cpa-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">リピート率</span>
+                        <span class="card-icon">🔄</span>
+                    </div>
+                    <div class="card-value" id="repeat-value">0%</div>
+                    <div class="card-subtitle">目標: 40%</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill success" id="repeat-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agent Cards -->
+            <h3 style="margin-bottom: 1rem; font-weight: 600;">エージェント別達成状況</h3>
+            <div class="agent-cards" id="agent-cards"></div>
+
+            <!-- Alert Section -->
+            <div class="alert-section">
+                <h3 class="alert-title">⚠️ 要注意項目</h3>
+                <ul class="alert-list" id="alert-list"></ul>
+            </div>
+
+            <!-- Chart -->
+            <div class="chart-container">
+                <h3 class="chart-title">エージェント別達成率</h3>
+                <canvas id="agent-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Input Tab -->
+        <div id="input" class="tab-content hidden">
+            <div class="input-section">
+                <h3 style="margin-bottom: 1rem; font-weight: 600;">主要KPI実績入力</h3>
+                <p style="color: var(--gray-500); margin-bottom: 1.5rem;">実績値を入力して「更新」をクリックしてください。</p>
+                <div class="input-group" id="input-fields"></div>
+                <div style="margin-top: 1.5rem;">
+                    <button class="btn btn-primary" onclick="updateActuals()">更新</button>
+                    <button class="btn" style="margin-left: 0.5rem; background: var(--gray-200);" onclick="resetActuals()">リセット</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Detail Tabs -->
+        <div id="commander" class="tab-content hidden"></div>
+        <div id="acquisition" class="tab-content hidden"></div>
+        <div id="creative" class="tab-content hidden"></div>
+        <div id="insight" class="tab-content hidden"></div>
+        <div id="engagement" class="tab-content hidden"></div>
+        <div id="operations" class="tab-content hidden"></div>
+    </div>
+
+    <script>
+        // KPI Data (embedded from JSON)
+        let kpiData = null;
+        let actuals = {};
+
+        // Load data
+        async function loadData() {
+            try {
+                const response = await fetch('kpi-data.json');
+                kpiData = await response.json();
+                initializeActuals();
+                renderAll();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                // Use embedded fallback data for demo
+                initializeFallbackData();
+            }
+        }
+
+        function initializeFallbackData() {
+            // Minimal fallback for demo
+            kpiData = {
+                meta: { targetRevenue: 1300000000 },
+                agents: [
+                    { id: 'commander', name: 'COMMANDER', icon: '🎯', categories: [] },
+                    { id: 'acquisition', name: 'ACQUISITION', icon: '📈', categories: [] },
+                    { id: 'creative', name: 'CREATIVE', icon: '✏️', categories: [] },
+                    { id: 'insight', name: 'INSIGHT', icon: '📊', categories: [] },
+                    { id: 'engagement', name: 'ENGAGEMENT', icon: '💌', categories: [] },
+                    { id: 'operations', name: 'OPERATIONS', icon: '⚙️', categories: [] }
+                ]
+            };
+            renderAll();
+        }
+
+        function initializeActuals() {
+            // Load from localStorage or initialize with sample data
+            const saved = localStorage.getItem('kpi-actuals');
+            if (saved) {
+                actuals = JSON.parse(saved);
+            } else {
+                // Initialize with 80% of targets as sample
+                kpiData.agents.forEach(agent => {
+                    agent.categories.forEach(cat => {
+                        cat.kpis.forEach(kpi => {
+                            actuals[kpi.id] = kpi.target * (0.7 + Math.random() * 0.4);
+                        });
+                    });
+                });
+                saveActuals();
+            }
+        }
+
+        function saveActuals() {
+            localStorage.setItem('kpi-actuals', JSON.stringify(actuals));
+        }
+
+        function formatNumber(num, unit) {
+            if (unit === '円' && num >= 100000000) {
+                return (num / 100000000).toFixed(2) + '億円';
+            } else if (unit === '円' && num >= 10000) {
+                return (num / 10000).toFixed(0) + '万円';
+            } else if (unit === '円') {
+                return num.toLocaleString() + '円';
+            }
+            return num.toLocaleString() + (unit || '');
+        }
+
+        function getAchievementRate(actual, target) {
+            if (!target) return 0;
+            return Math.min((actual / target) * 100, 150);
+        }
+
+        function getStatusClass(rate) {
+            if (rate >= 100) return 'excellent';
+            if (rate >= 85) return 'good';
+            if (rate >= 70) return 'warning';
+            return 'danger';
+        }
+
+        function getProgressClass(rate) {
+            if (rate >= 85) return 'success';
+            if (rate >= 70) return 'warning';
+            return 'danger';
+        }
+
+        function checkReality(actual, kpi) {
+            if (actual < kpi.benchmark_min) {
+                return { status: 'low', icon: '⚠️', text: 'ベンチマーク下限未満' };
+            }
+            if (actual > kpi.benchmark_max) {
+                return { status: 'high', icon: '🔴', text: '非現実的（上限超過）' };
+            }
+            return { status: 'ok', icon: '✅', text: '妥当' };
+        }
+
+        function renderAgentCards() {
+            const container = document.getElementById('agent-cards');
+            if (!kpiData) return;
+
+            container.innerHTML = kpiData.agents.map(agent => {
+                const allKpis = agent.categories.flatMap(cat => cat.kpis);
+                const avgRate = allKpis.length ?
+                    allKpis.reduce((sum, kpi) => sum + getAchievementRate(actuals[kpi.id] || 0, kpi.target), 0) / allKpis.length : 0;
+
+                return `
+                    <div class="agent-card" onclick="showAgentDetail('${agent.id}')">
+                        <div class="icon">${agent.icon}</div>
+                        <div class="name">${agent.name}</div>
+                        <div class="score">${avgRate.toFixed(0)}%</div>
+                        <span class="status ${getStatusClass(avgRate)}">
+                            ${avgRate >= 100 ? '目標達成' : avgRate >= 85 ? '順調' : avgRate >= 70 ? '要改善' : '要対策'}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderAlerts() {
+            const container = document.getElementById('alert-list');
+            if (!kpiData) return;
+
+            const alerts = [];
+
+            kpiData.agents.forEach(agent => {
+                agent.categories.forEach(cat => {
+                    cat.kpis.forEach(kpi => {
+                        const actual = actuals[kpi.id] || 0;
+                        const rate = getAchievementRate(actual, kpi.target);
+                        const reality = checkReality(actual, kpi);
+
+                        if (rate < 70) {
+                            alerts.push({
+                                type: 'danger',
+                                text: `${agent.icon} ${kpi.name}: 達成率 ${rate.toFixed(0)}%（目標: ${formatNumber(kpi.target, kpi.unit)}）`
+                            });
+                        } else if (rate < 85) {
+                            alerts.push({
+                                type: 'warning',
+                                text: `${agent.icon} ${kpi.name}: 達成率 ${rate.toFixed(0)}%（あと${(100-rate).toFixed(0)}%）`
+                            });
+                        }
+
+                        if (reality.status === 'high') {
+                            alerts.push({
+                                type: 'unrealistic',
+                                text: `${agent.icon} ${kpi.name}: 目標設定が非現実的（業界上限: ${formatNumber(kpi.benchmark_max, kpi.unit)}）`
+                            });
+                        }
+                    });
+                });
+            });
+
+            container.innerHTML = alerts.slice(0, 10).map(alert => `
+                <li class="alert-item ${alert.type}">${alert.text}</li>
+            `).join('') || '<li style="padding: 1rem; color: var(--gray-500);">問題なし</li>';
+        }
+
+        function renderSummaryCards() {
+            // Revenue
+            const revenue = actuals['cmd_001'] || 0;
+            const revenueRate = getAchievementRate(revenue, 1300000000);
+            document.getElementById('revenue-value').textContent = formatNumber(revenue, '円');
+            document.getElementById('revenue-progress').style.width = Math.min(revenueRate, 100) + '%';
+            document.getElementById('revenue-progress').className = 'progress-fill ' + getProgressClass(revenueRate);
+
+            // Profit
+            const profit = actuals['cmd_002'] || 0;
+            const profitRate = getAchievementRate(profit, 195000000);
+            document.getElementById('profit-value').textContent = formatNumber(profit, '円');
+            document.getElementById('profit-progress').style.width = Math.min(profitRate, 100) + '%';
+            document.getElementById('profit-progress').className = 'progress-fill ' + getProgressClass(profitRate);
+
+            // LTV/CPA
+            const ltvCpa = actuals['cmd_011'] || 0;
+            const ltvCpaRate = getAchievementRate(ltvCpa, 3.0);
+            document.getElementById('ltv-cpa-value').textContent = ltvCpa.toFixed(2) + '倍';
+            document.getElementById('ltv-cpa-progress').style.width = Math.min(ltvCpaRate, 100) + '%';
+            document.getElementById('ltv-cpa-progress').className = 'progress-fill ' + getProgressClass(ltvCpaRate);
+
+            // Repeat Rate
+            const repeat = actuals['eng_003'] || 0;
+            const repeatRate = getAchievementRate(repeat, 40);
+            document.getElementById('repeat-value').textContent = repeat.toFixed(1) + '%';
+            document.getElementById('repeat-progress').style.width = Math.min(repeatRate, 100) + '%';
+            document.getElementById('repeat-progress').className = 'progress-fill ' + getProgressClass(repeatRate);
+        }
+
+        function renderAgentDetail(agentId) {
+            const container = document.getElementById(agentId);
+            const agent = kpiData.agents.find(a => a.id === agentId);
+            if (!agent) return;
+
+            let html = `<h2 style="margin-bottom: 1.5rem;">${agent.icon} ${agent.name} - ${agent.description}</h2>`;
+
+            agent.categories.forEach(cat => {
+                html += `
+                    <div class="kpi-table" style="margin-bottom: 1.5rem;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th colspan="6" style="background: var(--primary); color: white;">${cat.name}</th>
+                                </tr>
+                                <tr>
+                                    <th>KPI名</th>
+                                    <th>レベル</th>
+                                    <th>目標値</th>
+                                    <th>実績値</th>
+                                    <th>達成率</th>
+                                    <th>現実性</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${cat.kpis.map(kpi => {
+                                    const actual = actuals[kpi.id] || 0;
+                                    const rate = getAchievementRate(actual, kpi.target);
+                                    const reality = checkReality(kpi.target, kpi);
+                                    const levelClass = kpi.level.toLowerCase().replace('-', '');
+
+                                    return `
+                                        <tr>
+                                            <td class="kpi-name">${kpi.name}</td>
+                                            <td><span class="kpi-level ${levelClass}">${kpi.level}</span></td>
+                                            <td>${formatNumber(kpi.target, kpi.unit)}</td>
+                                            <td>
+                                                <input type="number" value="${actual.toFixed(kpi.unit === '%' || kpi.unit === '倍' ? 2 : 0)}"
+                                                    data-kpi-id="${kpi.id}"
+                                                    style="width: 100px; padding: 0.25rem; border: 1px solid var(--gray-300); border-radius: 4px;"
+                                                    onchange="updateSingleActual('${kpi.id}', this.value)">
+                                                <span style="color: var(--gray-500); font-size: 0.75rem;">${kpi.unit}</span>
+                                            </td>
+                                            <td>
+                                                <div class="achievement">
+                                                    <span style="width: 50px; font-weight: 600; color: ${rate >= 85 ? 'var(--success)' : rate >= 70 ? 'var(--warning)' : 'var(--danger)'}">
+                                                        ${rate.toFixed(0)}%
+                                                    </span>
+                                                    <div class="achievement-bar">
+                                                        <div class="achievement-fill ${getProgressClass(rate)}" style="width: ${Math.min(rate, 100)}%"></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="reality-check">
+                                                    <span class="reality-icon">${reality.icon}</span>
+                                                    <span style="font-size: 0.75rem; color: var(--gray-500);">${reality.text}</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderInputFields() {
+            const container = document.getElementById('input-fields');
+            if (!kpiData) return;
+
+            // Get main KPIs (KGI level)
+            const mainKpis = [];
+            kpiData.agents.forEach(agent => {
+                agent.categories.forEach(cat => {
+                    cat.kpis.forEach(kpi => {
+                        if (kpi.level === 'KGI') {
+                            mainKpis.push({ ...kpi, agent: agent.name, agentIcon: agent.icon });
+                        }
+                    });
+                });
+            });
+
+            container.innerHTML = mainKpis.map(kpi => `
+                <div class="input-field">
+                    <label>${kpi.agentIcon} ${kpi.name}</label>
+                    <input type="number" id="input-${kpi.id}" value="${actuals[kpi.id] || 0}"
+                        placeholder="目標: ${formatNumber(kpi.target, kpi.unit)}">
+                </div>
+            `).join('');
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('agent-chart');
+            if (!ctx || !kpiData) return;
+
+            const labels = kpiData.agents.map(a => a.name);
+            const data = kpiData.agents.map(agent => {
+                const allKpis = agent.categories.flatMap(cat => cat.kpis);
+                return allKpis.length ?
+                    allKpis.reduce((sum, kpi) => sum + getAchievementRate(actuals[kpi.id] || 0, kpi.target), 0) / allKpis.length : 0;
+            });
+
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '達成率 (%)',
+                        data: data,
+                        backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                        borderColor: 'rgba(37, 99, 235, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(37, 99, 235, 1)'
+                    }, {
+                        label: '目標 (100%)',
+                        data: [100, 100, 100, 100, 100, 100],
+                        backgroundColor: 'rgba(156, 163, 175, 0.1)',
+                        borderColor: 'rgba(156, 163, 175, 0.5)',
+                        borderWidth: 1,
+                        borderDash: [5, 5]
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 120,
+                            ticks: {
+                                stepSize: 20
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateSingleActual(kpiId, value) {
+            actuals[kpiId] = parseFloat(value) || 0;
+            saveActuals();
+            renderAll();
+        }
+
+        function updateActuals() {
+            if (!kpiData) return;
+
+            kpiData.agents.forEach(agent => {
+                agent.categories.forEach(cat => {
+                    cat.kpis.forEach(kpi => {
+                        if (kpi.level === 'KGI') {
+                            const input = document.getElementById(`input-${kpi.id}`);
+                            if (input) {
+                                actuals[kpi.id] = parseFloat(input.value) || 0;
+                            }
+                        }
+                    });
+                });
+            });
+
+            saveActuals();
+            renderAll();
+            alert('実績を更新しました');
+        }
+
+        function resetActuals() {
+            if (confirm('すべての実績をリセットしますか？')) {
+                localStorage.removeItem('kpi-actuals');
+                initializeActuals();
+                renderAll();
+            }
+        }
+
+        function showAgentDetail(agentId) {
+            // Switch to agent tab
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.tab === agentId);
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.toggle('hidden', content.id !== agentId);
+            });
+            renderAgentDetail(agentId);
+        }
+
+        function renderAll() {
+            if (!kpiData) return;
+            renderSummaryCards();
+            renderAgentCards();
+            renderAlerts();
+            renderInputFields();
+            kpiData.agents.forEach(agent => renderAgentDetail(agent.id));
+            renderChart();
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.toggle('hidden', content.id !== tabId);
+                });
+
+                if (tabId !== 'summary' && tabId !== 'input') {
+                    renderAgentDetail(tabId);
+                }
+            });
+        });
+
+        // Initialize
+        loadData();
+    </script>
+</body>
+</html>
