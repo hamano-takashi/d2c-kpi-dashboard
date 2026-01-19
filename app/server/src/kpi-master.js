@@ -1,9 +1,17 @@
-import { get, run, all, saveDatabase } from './database.js';
+// 環境変数でDB切り替え
+const usePostgres = !!process.env.DATABASE_URL;
+let dbModule;
+if (usePostgres) {
+  dbModule = await import('./database-pg.js');
+} else {
+  dbModule = await import('./database.js');
+}
+const { get, run, all, saveDatabase } = dbModule;
 
 // KPI Master Data - D2C Business Structure
 // 売上 = 集客 × CVR × 顧客単価 × LTV
-export function initializeKpiMaster() {
-  const count = get('SELECT COUNT(*) as count FROM kpi_master');
+export async function initializeKpiMaster() {
+  const count = await get('SELECT COUNT(*) as count FROM kpi_master');
   if (count && count.count > 0) return;
 
   const kpis = [
@@ -123,7 +131,7 @@ export function initializeKpiMaster() {
   ];
 
   for (const kpi of kpis) {
-    run(
+    await run(
       `INSERT INTO kpi_master (id, agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -147,47 +155,47 @@ export function initializeKpiMaster() {
 }
 
 // KPI追加機能
-export function addKpi(kpiData) {
+export async function addKpi(kpiData) {
   const { id, agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description } = kpiData;
 
   // 既存チェック
-  const existing = get('SELECT id FROM kpi_master WHERE id = ?', [id]);
+  const existing = await get('SELECT id FROM kpi_master WHERE id = ?', [id]);
   if (existing) {
     throw new Error('KPI ID already exists');
   }
 
-  run(
+  await run(
     `INSERT INTO kpi_master (id, agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description]
   );
 
   saveDatabase();
-  return get('SELECT * FROM kpi_master WHERE id = ?', [id]);
+  return await get('SELECT * FROM kpi_master WHERE id = ?', [id]);
 }
 
 // KPI更新機能
-export function updateKpi(id, kpiData) {
+export async function updateKpi(id, kpiData) {
   const { agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description } = kpiData;
 
-  run(
+  await run(
     `UPDATE kpi_master SET agent = ?, category = ?, name = ?, unit = ?, default_target = ?, benchmark_min = ?, benchmark_max = ?, level = ?, parent_kpi_id = ?, description = ?
      WHERE id = ?`,
     [agent, category, name, unit, default_target, benchmark_min, benchmark_max, level, parent_kpi_id, description, id]
   );
 
   saveDatabase();
-  return get('SELECT * FROM kpi_master WHERE id = ?', [id]);
+  return await get('SELECT * FROM kpi_master WHERE id = ?', [id]);
 }
 
 // KPI削除機能
-export function deleteKpi(id) {
+export async function deleteKpi(id) {
   // 子KPIがある場合は削除不可
-  const children = all('SELECT id FROM kpi_master WHERE parent_kpi_id = ?', [id]);
+  const children = await all('SELECT id FROM kpi_master WHERE parent_kpi_id = ?', [id]);
   if (children.length > 0) {
     throw new Error('Cannot delete KPI with children');
   }
 
-  run('DELETE FROM kpi_master WHERE id = ?', [id]);
+  await run('DELETE FROM kpi_master WHERE id = ?', [id]);
   saveDatabase();
 }

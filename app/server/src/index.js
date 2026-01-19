@@ -3,15 +3,44 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import { initDatabase, run, get, all, saveDatabase } from './database.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// 環境変数でDB切り替え（PostgreSQL or SQLite）
+const usePostgres = !!process.env.DATABASE_URL;
+let dbModule;
+if (usePostgres) {
+  dbModule = await import('./database-pg.js');
+  console.log('[DB] Using PostgreSQL');
+} else {
+  dbModule = await import('./database.js');
+  console.log('[DB] Using SQLite');
+}
+const { initDatabase, run, get, all, saveDatabase } = dbModule;
+
 import { initializeKpiMaster, addKpi, updateKpi, deleteKpi } from './kpi-master.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'd2c-kpi-secret-key-2024';
 
-app.use(cors());
+// CORS設定（本番環境対応）
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// 本番環境ではフロントエンドの静的ファイルを配信
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = path.join(__dirname, '../../client/dist');
+  app.use(express.static(clientDist));
+}
 
 // 認証ミドルウェア
 const authenticate = (req, res, next) => {
@@ -29,11 +58,11 @@ const authenticate = (req, res, next) => {
 };
 
 // 権限チェックミドルウェア
-const checkRole = (requiredRoles) => (req, res, next) => {
+const checkRole = (requiredRoles) => async (req, res, next) => {
   const { projectId } = req.params;
   const userId = req.user.id;
 
-  const member = get(
+  const member = await get(
     `SELECT role FROM project_members WHERE project_id = ? AND user_id = ?`,
     [projectId, userId]
   );
@@ -53,7 +82,7 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
-    const existing = get('SELECT id FROM users WHERE email = ?', [email]);
+    const existing = await get('SELECT id FROM users WHERE email = ?', [email]);
     if (existing) {
       return res.status(400).json({ error: 'このメールアドレスは既に登録されています' });
     }
@@ -61,7 +90,7 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = uuidv4();
 
-    run(
+    await run(
       `INSERT INTO users (id, email, password, name) VALUES (?, ?, ?, ?)`,
       [userId, email, hashedPassword, name]
     );
@@ -80,7 +109,7 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = get('SELECT * FROM users WHERE email = ?', [email]);
+    const user = await get('SELECT * FROM users WHERE email = ?', [email]);
     if (!user) {
       return res.status(401).json({ error: 'メールアドレスまたはパスワードが正しくありません' });
     }
@@ -100,16 +129,16 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // 現在のユーザー情報取得
-app.get('/api/auth/me', authenticate, (req, res) => {
-  const user = get('SELECT id, email, name FROM users WHERE id = ?', [req.user.id]);
+app.get('/api/auth/me', authenticate, async (req, res) => {
+  const user = await get('SELECT id, email, name FROM users WHERE id = ?', [req.user.id]);
   res.json(user);
 });
 
 // ========== プロジェクトAPI ==========
 
 // プロジェクト一覧取得
-app.get('/api/projects', authenticate, (req, res) => {
-  const projects = all(`
+app.get('/api/projects', authenticate, async (req, res) => {
+  const projects = await all(`
     SELECT p.*, pm.role, u.name as owner_name
     FROM projects p
     JOIN project_members pm ON p.id = pm.project_id
@@ -121,18 +150,18 @@ app.get('/api/projects', authenticate, (req, res) => {
 });
 
 // プロジェクト作成
-app.post('/api/projects', authenticate, (req, res) => {
+app.post('/api/projects', authenticate, async (req, res) => {
   try {
     const { name } = req.body;
     const projectId = uuidv4();
 
-    run(
+    await run(
       `INSERT INTO projects (id, name, owner_id) VALUES (?, ?, ?)`,
       [projectId, name, req.user.id]
     );
 
     // オーナーを管理者として追加
-    run(
+    await run(
       `INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, 'admin')`,
       [projectId, req.user.id]
     );
@@ -145,8 +174,8 @@ app.post('/api/projects', authenticate, (req, res) => {
 });
 
 // プロジェクト詳細取得
-app.get('/api/projects/:projectId', authenticate, checkRole(['admin', 'editor', 'viewer']), (req, res) => {
-  const project = get(`
+app.get('/api/projects/:projectId', authenticate, checkRole(['admin', 'editor', 'viewer']), async (req, res) => {
+  const project = await get(`
     SELECT p.*, u.name as owner_name
     FROM projects p
     JOIN users u ON p.owner_id = u.id
@@ -163,8 +192,8 @@ app.get('/api/projects/:projectId', authenticate, checkRole(['admin', 'editor', 
 // ========== メンバー管理API ==========
 
 // メンバー一覧取得
-app.get('/api/projects/:projectId/members', authenticate, checkRole(['admin', 'editor', 'viewer']), (req, res) => {
-  const members = all(`
+app.get('/api/projects/:projectId/members', authenticate, checkRole(['admin', 'editor', 'viewer']), async (req, res) => {
+  const members = await all(`
     SELECT u.id, u.email, u.name, pm.role, pm.created_at
     FROM project_members pm
     JOIN users u ON pm.user_id = u.id
@@ -175,17 +204,17 @@ app.get('/api/projects/:projectId/members', authenticate, checkRole(['admin', 'e
 });
 
 // メンバー追加
-app.post('/api/projects/:projectId/members', authenticate, checkRole(['admin']), (req, res) => {
+app.post('/api/projects/:projectId/members', authenticate, checkRole(['admin']), async (req, res) => {
   try {
     const { email, role } = req.body;
     const { projectId } = req.params;
 
-    const user = get('SELECT id FROM users WHERE email = ?', [email]);
+    const user = await get('SELECT id FROM users WHERE email = ?', [email]);
     if (!user) {
       return res.status(404).json({ error: 'ユーザーが見つかりません。先にユーザー登録が必要です。' });
     }
 
-    const existing = get(
+    const existing = await get(
       `SELECT * FROM project_members WHERE project_id = ? AND user_id = ?`,
       [projectId, user.id]
     );
@@ -194,7 +223,7 @@ app.post('/api/projects/:projectId/members', authenticate, checkRole(['admin']),
       return res.status(400).json({ error: 'このユーザーは既にメンバーです' });
     }
 
-    run(
+    await run(
       `INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)`,
       [projectId, user.id, role]
     );
@@ -207,12 +236,12 @@ app.post('/api/projects/:projectId/members', authenticate, checkRole(['admin']),
 });
 
 // メンバー権限変更
-app.put('/api/projects/:projectId/members/:userId', authenticate, checkRole(['admin']), (req, res) => {
+app.put('/api/projects/:projectId/members/:userId', authenticate, checkRole(['admin']), async (req, res) => {
   try {
     const { role } = req.body;
     const { projectId, userId } = req.params;
 
-    run(
+    await run(
       `UPDATE project_members SET role = ? WHERE project_id = ? AND user_id = ?`,
       [role, projectId, userId]
     );
@@ -224,17 +253,17 @@ app.put('/api/projects/:projectId/members/:userId', authenticate, checkRole(['ad
 });
 
 // メンバー削除
-app.delete('/api/projects/:projectId/members/:userId', authenticate, checkRole(['admin']), (req, res) => {
+app.delete('/api/projects/:projectId/members/:userId', authenticate, checkRole(['admin']), async (req, res) => {
   try {
     const { projectId, userId } = req.params;
 
     // オーナーは削除不可
-    const project = get('SELECT owner_id FROM projects WHERE id = ?', [projectId]);
+    const project = await get('SELECT owner_id FROM projects WHERE id = ?', [projectId]);
     if (project.owner_id === userId) {
       return res.status(400).json({ error: 'オーナーは削除できません' });
     }
 
-    run(
+    await run(
       `DELETE FROM project_members WHERE project_id = ? AND user_id = ?`,
       [projectId, userId]
     );
@@ -248,15 +277,15 @@ app.delete('/api/projects/:projectId/members/:userId', authenticate, checkRole([
 // ========== KPI API ==========
 
 // KPIマスター一覧取得
-app.get('/api/kpi-master', (req, res) => {
-  const kpis = all('SELECT * FROM kpi_master ORDER BY level, agent, category, id');
+app.get('/api/kpi-master', async (req, res) => {
+  const kpis = await all('SELECT * FROM kpi_master ORDER BY level, agent, category, id');
   res.json(kpis);
 });
 
 // KPI追加
-app.post('/api/kpi-master', authenticate, (req, res) => {
+app.post('/api/kpi-master', authenticate, async (req, res) => {
   try {
-    const kpi = addKpi(req.body);
+    const kpi = await addKpi(req.body);
     res.json(kpi);
   } catch (error) {
     console.error('Add KPI error:', error);
@@ -265,9 +294,9 @@ app.post('/api/kpi-master', authenticate, (req, res) => {
 });
 
 // KPI更新
-app.put('/api/kpi-master/:kpiId', authenticate, (req, res) => {
+app.put('/api/kpi-master/:kpiId', authenticate, async (req, res) => {
   try {
-    const kpi = updateKpi(req.params.kpiId, req.body);
+    const kpi = await updateKpi(req.params.kpiId, req.body);
     res.json(kpi);
   } catch (error) {
     console.error('Update KPI error:', error);
@@ -276,9 +305,9 @@ app.put('/api/kpi-master/:kpiId', authenticate, (req, res) => {
 });
 
 // KPI削除
-app.delete('/api/kpi-master/:kpiId', authenticate, (req, res) => {
+app.delete('/api/kpi-master/:kpiId', authenticate, async (req, res) => {
   try {
-    deleteKpi(req.params.kpiId);
+    await deleteKpi(req.params.kpiId);
     res.json({ message: 'KPIを削除しました' });
   } catch (error) {
     console.error('Delete KPI error:', error);
@@ -287,9 +316,9 @@ app.delete('/api/kpi-master/:kpiId', authenticate, (req, res) => {
 });
 
 // KPI目標値取得
-app.get('/api/projects/:projectId/targets', authenticate, checkRole(['admin', 'editor', 'viewer']), (req, res) => {
+app.get('/api/projects/:projectId/targets', authenticate, checkRole(['admin', 'editor', 'viewer']), async (req, res) => {
   const { year } = req.query;
-  const targets = all(
+  const targets = await all(
     `SELECT * FROM kpi_targets WHERE project_id = ? AND year = ?`,
     [req.params.projectId, year || new Date().getFullYear()]
   );
@@ -298,15 +327,16 @@ app.get('/api/projects/:projectId/targets', authenticate, checkRole(['admin', 'e
 });
 
 // KPI目標値設定
-app.post('/api/projects/:projectId/targets', authenticate, checkRole(['admin']), (req, res) => {
+app.post('/api/projects/:projectId/targets', authenticate, checkRole(['admin']), async (req, res) => {
   try {
     const { targets } = req.body;
     const { projectId } = req.params;
 
     for (const item of targets) {
-      run(
-        `INSERT OR REPLACE INTO kpi_targets (project_id, kpi_id, target_value, year, month)
-         VALUES (?, ?, ?, ?, ?)`,
+      await run(
+        `INSERT INTO kpi_targets (project_id, kpi_id, target_value, year, month)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT (project_id, kpi_id, year, month) DO UPDATE SET target_value = EXCLUDED.target_value`,
         [projectId, item.kpi_id, item.target_value, item.year, item.month || null]
       );
     }
@@ -319,7 +349,7 @@ app.post('/api/projects/:projectId/targets', authenticate, checkRole(['admin']),
 });
 
 // KPI実績値取得
-app.get('/api/projects/:projectId/actuals', authenticate, checkRole(['admin', 'editor', 'viewer']), (req, res) => {
+app.get('/api/projects/:projectId/actuals', authenticate, checkRole(['admin', 'editor', 'viewer']), async (req, res) => {
   const { year, month } = req.query;
   let query = `SELECT * FROM kpi_actuals WHERE project_id = ?`;
   const params = [req.params.projectId];
@@ -333,20 +363,21 @@ app.get('/api/projects/:projectId/actuals', authenticate, checkRole(['admin', 'e
     params.push(month);
   }
 
-  const actuals = all(query, params);
+  const actuals = await all(query, params);
   res.json(actuals);
 });
 
 // KPI実績値入力
-app.post('/api/projects/:projectId/actuals', authenticate, checkRole(['admin', 'editor']), (req, res) => {
+app.post('/api/projects/:projectId/actuals', authenticate, checkRole(['admin', 'editor']), async (req, res) => {
   try {
     const { actuals } = req.body;
     const { projectId } = req.params;
 
     for (const item of actuals) {
-      run(
-        `INSERT OR REPLACE INTO kpi_actuals (project_id, kpi_id, actual_value, year, month, updated_by)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+      await run(
+        `INSERT INTO kpi_actuals (project_id, kpi_id, actual_value, year, month, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT (project_id, kpi_id, year, month) DO UPDATE SET actual_value = EXCLUDED.actual_value, updated_by = EXCLUDED.updated_by`,
         [projectId, item.kpi_id, item.actual_value, item.year, item.month, req.user.id]
       );
     }
@@ -361,14 +392,14 @@ app.post('/api/projects/:projectId/actuals', authenticate, checkRole(['admin', '
 // ========== ダッシュボードAPI ==========
 
 // サマリー取得
-app.get('/api/projects/:projectId/summary', authenticate, checkRole(['admin', 'editor', 'viewer']), (req, res) => {
+app.get('/api/projects/:projectId/summary', authenticate, checkRole(['admin', 'editor', 'viewer']), async (req, res) => {
   const { year, month } = req.query;
   const { projectId } = req.params;
   const currentYear = year || new Date().getFullYear();
   const currentMonth = month || new Date().getMonth() + 1;
 
   // KGI達成状況
-  const kgis = all(`
+  const kgis = await all(`
     SELECT
       km.id, km.name, km.unit, km.benchmark_min, km.benchmark_max,
       kt.target_value,
@@ -380,7 +411,7 @@ app.get('/api/projects/:projectId/summary', authenticate, checkRole(['admin', 'e
   `, [projectId, currentYear, projectId, currentYear, currentMonth]);
 
   // エージェント別スコア
-  const agentScores = all(`
+  const agentScores = await all(`
     SELECT
       km.agent,
       COUNT(*) as total,
@@ -393,7 +424,7 @@ app.get('/api/projects/:projectId/summary', authenticate, checkRole(['admin', 'e
   `, [projectId, currentYear, projectId, currentYear, currentMonth]);
 
   // アラート（達成率70%未満）
-  const alerts = all(`
+  const alerts = await all(`
     SELECT
       km.id, km.name, km.agent, km.unit,
       kt.target_value,
@@ -411,18 +442,18 @@ app.get('/api/projects/:projectId/summary', authenticate, checkRole(['admin', 'e
 });
 
 // データエクスポート
-app.get('/api/projects/:projectId/export', authenticate, checkRole(['admin', 'editor', 'viewer']), (req, res) => {
+app.get('/api/projects/:projectId/export', authenticate, checkRole(['admin', 'editor', 'viewer']), async (req, res) => {
   const { projectId } = req.params;
 
-  const project = get('SELECT * FROM projects WHERE id = ?', [projectId]);
-  const members = all(`
+  const project = await get('SELECT * FROM projects WHERE id = ?', [projectId]);
+  const members = await all(`
     SELECT u.id, u.email, u.name, pm.role
     FROM project_members pm
     JOIN users u ON pm.user_id = u.id
     WHERE pm.project_id = ?
   `, [projectId]);
-  const targets = all('SELECT * FROM kpi_targets WHERE project_id = ?', [projectId]);
-  const actuals = all('SELECT * FROM kpi_actuals WHERE project_id = ?', [projectId]);
+  const targets = await all('SELECT * FROM kpi_targets WHERE project_id = ?', [projectId]);
+  const actuals = await all('SELECT * FROM kpi_actuals WHERE project_id = ?', [projectId]);
 
   res.json({
     exportedAt: new Date().toISOString(),
@@ -434,16 +465,17 @@ app.get('/api/projects/:projectId/export', authenticate, checkRole(['admin', 'ed
 });
 
 // データインポート
-app.post('/api/projects/:projectId/import', authenticate, checkRole(['admin']), (req, res) => {
+app.post('/api/projects/:projectId/import', authenticate, checkRole(['admin']), async (req, res) => {
   try {
     const { projectId } = req.params;
     const { targets, actuals } = req.body;
 
     if (targets && targets.length > 0) {
       for (const t of targets) {
-        run(
-          `INSERT OR REPLACE INTO kpi_targets (project_id, kpi_id, target_value, year, month)
-           VALUES (?, ?, ?, ?, ?)`,
+        await run(
+          `INSERT INTO kpi_targets (project_id, kpi_id, target_value, year, month)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT (project_id, kpi_id, year, month) DO UPDATE SET target_value = EXCLUDED.target_value`,
           [projectId, t.kpi_id, t.target_value, t.year, t.month || null]
         );
       }
@@ -451,9 +483,10 @@ app.post('/api/projects/:projectId/import', authenticate, checkRole(['admin']), 
 
     if (actuals && actuals.length > 0) {
       for (const a of actuals) {
-        run(
-          `INSERT OR REPLACE INTO kpi_actuals (project_id, kpi_id, actual_value, year, month, updated_by)
-           VALUES (?, ?, ?, ?, ?, ?)`,
+        await run(
+          `INSERT INTO kpi_actuals (project_id, kpi_id, actual_value, year, month, updated_by)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT (project_id, kpi_id, year, month) DO UPDATE SET actual_value = EXCLUDED.actual_value, updated_by = EXCLUDED.updated_by`,
           [projectId, a.kpi_id, a.actual_value, a.year, a.month, req.user.id]
         );
       }
@@ -466,17 +499,31 @@ app.post('/api/projects/:projectId/import', authenticate, checkRole(['admin']), 
   }
 });
 
+// 本番環境でのSPAルーティング対応
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    // API以外のリクエストはindex.htmlを返す
+    if (!req.path.startsWith('/api')) {
+      const clientDist = path.join(__dirname, '../../client/dist');
+      res.sendFile(path.join(clientDist, 'index.html'));
+    }
+  });
+}
+
 // サーバー起動
 async function start() {
   try {
     await initDatabase();
     console.log('[OK] Database initialized');
 
-    initializeKpiMaster();
+    await initializeKpiMaster();
     console.log('[OK] KPI Master data initialized');
 
     app.listen(PORT, () => {
       console.log(`[Server] D2C KPI Dashboard running on http://localhost:${PORT}`);
+      if (process.env.NODE_ENV === 'production') {
+        console.log('[Server] Running in production mode');
+      }
     });
   } catch (error) {
     console.error('Server start error:', error);

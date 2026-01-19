@@ -125,13 +125,20 @@ export function getDb() {
   return db;
 }
 
-// クエリ実行ヘルパー
-export function run(sql, params = []) {
-  db.run(sql, params);
+// クエリ実行ヘルパー（async互換）
+export async function run(sql, params = []) {
+  // ON CONFLICT構文をSQLite互換に変換
+  const sqliteSql = sql.replace(
+    /ON CONFLICT \(([^)]+)\) DO UPDATE SET (.+)/gi,
+    (match, columns, updates) => {
+      return `ON CONFLICT(${columns}) DO UPDATE SET ${updates}`;
+    }
+  );
+  db.run(sqliteSql, params);
   saveDatabase();
 }
 
-export function get(sql, params = []) {
+export async function get(sql, params = []) {
   const stmt = db.prepare(sql);
   stmt.bind(params);
   if (stmt.step()) {
@@ -143,7 +150,7 @@ export function get(sql, params = []) {
   return null;
 }
 
-export function all(sql, params = []) {
+export async function all(sql, params = []) {
   const stmt = db.prepare(sql);
   stmt.bind(params);
   const rows = [];

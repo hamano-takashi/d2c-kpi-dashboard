@@ -1,0 +1,12 @@
+{
+  "name": "d2c-kpi-dashboard",
+  "version": "1.0.0",
+  "description": "D2C KPI管理ダッシュボード",
+  "scripts": {
+    "install:all": "cd app/client && npm install && cd ../server && npm install",
+    "build": "cd app/client && npm run build",
+    "start": "cd app/server && npm start",
+    "dev:client": "cd app/client && npm run dev",
+    "dev:server": "cd app/server && npm run dev"
+  }
+}
