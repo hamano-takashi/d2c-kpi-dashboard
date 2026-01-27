@@ -248,6 +248,47 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
   res.json({ ...user, tenant });
 });
 
+// アカウント削除（自分自身のアカウントを削除）
+app.delete('/api/auth/account', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { password } = req.body;
+
+    // パスワード確認
+    const user = await get('SELECT * FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'ユーザーが見つかりません' });
+    }
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      return res.status(401).json({ error: 'パスワードが正しくありません' });
+    }
+
+    // オーナーになっているプロジェクトがあるか確認
+    const ownedProjects = await all('SELECT id, name FROM projects WHERE owner_id = ?', [userId]);
+    if (ownedProjects.length > 0) {
+      return res.status(400).json({
+        error: 'オーナーになっているプロジェクトがあるため削除できません。先にプロジェクトを削除するか、オーナーを変更してください。',
+        projects: ownedProjects
+      });
+    }
+
+    // プロジェクトメンバーシップを削除
+    await run('DELETE FROM project_members WHERE user_id = ?', [userId]);
+
+    // ユーザーを削除
+    await run('DELETE FROM users WHERE id = ?', [userId]);
+
+    saveDatabase();
+
+    res.json({ message: 'アカウントを削除しました' });
+  } catch (error) {
+    console.error('Account deletion error:', error);
+    res.status(500).json({ error: 'アカウント削除に失敗しました' });
+  }
+});
+
 // ========== プロジェクトAPI ==========
 
 // プロジェクト一覧取得（テナント対応）

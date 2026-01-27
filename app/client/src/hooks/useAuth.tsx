@@ -28,6 +28,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setLoading(false);
     }
+
+    // api.tsからの401エラー時のログアウトイベントを監視
+    const handleAuthLogout = () => {
+      setUser(null);
+    };
+    window.addEventListener('auth:logout', handleAuthLogout);
+
+    return () => {
+      window.removeEventListener('auth:logout', handleAuthLogout);
+    };
   }, []);
 
   const login = async (email: string, password: string) => {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { projects } from '../utils/api';
+import { projects, auth } from '../utils/api';
 import { Project, ROLE_LABELS } from '../types';
 
 export default function ProjectListPage() {
@@ -12,6 +12,10 @@ export default function ProjectListPage() {
   const [showModal, setShowModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     loadProjects();
@@ -48,6 +52,24 @@ export default function ProjectListPage() {
     navigate('/login');
   };
 
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deletePassword) return;
+
+    setDeleting(true);
+    setDeleteError('');
+
+    try {
+      await auth.deleteAccount(deletePassword);
+      logout();
+      navigate('/login');
+    } catch (err: any) {
+      setDeleteError(err.message || 'アカウント削除に失敗しました');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="loading" style={{ minHeight: '100vh' }}>
@@ -70,6 +92,9 @@ export default function ProjectListPage() {
             </button>
             <button onClick={handleLogout} className="btn btn-secondary">
               ログアウト
+            </button>
+            <button onClick={() => setShowDeleteModal(true)} className="btn btn-danger">
+              アカウント削除
             </button>
           </div>
         </div>
@@ -143,6 +168,60 @@ export default function ProjectListPage() {
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={creating}>
                   {creating ? '作成中...' : '作成'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ color: 'var(--danger)' }}>アカウント削除</h2>
+              <button className="modal-close" onClick={() => setShowDeleteModal(false)}>
+                ×
+              </button>
+            </div>
+
+            <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
+              この操作は取り消せません。アカウントを削除すると、すべてのデータが失われます。
+            </div>
+
+            {deleteError && (
+              <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
+                {deleteError}
+              </div>
+            )}
+
+            <form onSubmit={handleDeleteAccount}>
+              <div className="form-group">
+                <label className="form-label">パスワードを入力して確認</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="現在のパスワード"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeletePassword('');
+                    setDeleteError('');
+                  }}
+                >
+                  キャンセル
+                </button>
+                <button type="submit" className="btn btn-danger" disabled={deleting}>
+                  {deleting ? '削除中...' : 'アカウントを削除'}
                 </button>
               </div>
             </form>

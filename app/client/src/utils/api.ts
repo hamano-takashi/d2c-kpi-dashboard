@@ -41,11 +41,8 @@ async function request<T>(
     // 401 Unauthorized: トークン無効・期限切れ
     if (response.status === 401) {
       localStorage.removeItem('token');
-      // ログインページへリダイレクト（現在のURLを保存してリダイレクト後に戻れるようにする）
-      const currentPath = window.location.pathname;
-      if (currentPath !== '/login' && currentPath !== '/register') {
-        window.location.href = '/login';
-      }
+      // カスタムイベントを発火してReact状態を同期
+      window.dispatchEvent(new CustomEvent('auth:logout'));
     }
 
     throw new ApiError(errorMessage, response.status);
@@ -67,6 +64,11 @@ export const auth = {
       { method: 'POST', body: JSON.stringify(data) }
     ),
   me: () => request<{ id: string; email: string; name: string }>('/auth/me'),
+  deleteAccount: (password: string) =>
+    request<{ message: string }>('/auth/account', {
+      method: 'DELETE',
+      body: JSON.stringify({ password }),
+    }),
 };
 
 // プロジェクトAPI
