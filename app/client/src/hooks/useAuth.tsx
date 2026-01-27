@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../types';
-import { auth } from '../utils/api';
+import { auth, ApiError } from '../utils/api';
 
 interface AuthContextType {
   user: User | null;
@@ -17,23 +17,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      auth.me()
-        .then(setUser)
-        .catch(() => {
-          localStorage.removeItem('token');
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-
     // api.tsからの401エラー時のログアウトイベントを監視
     const handleAuthLogout = () => {
       setUser(null);
     };
     window.addEventListener('auth:logout', handleAuthLogout);
+
+    const token = localStorage.getItem('token');
+    if (token) {
+      auth.me()
+        .then(setUser)
+        .catch((err) => {
+          // 401エラーの場合のみトークンを削除（api.tsで処理済みだが念のため）
+          // ネットワークエラーやタイムアウトではトークンを保持
+          if (err instanceof ApiError && err.status === 401) {
+            localStorage.removeItem('token');
+          } else {
+            // ネットワークエラー等の場合は、トークンを保持したままユーザー情報なしで続行
+            // 後続のAPIコールで再認証を試みる
+            console.warn('Failed to fetch user info, keeping token:', err);
+          }
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
 
     return () => {
       window.removeEventListener('auth:logout', handleAuthLogout);

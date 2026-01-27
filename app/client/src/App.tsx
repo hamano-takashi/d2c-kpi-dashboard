@@ -29,7 +29,12 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) {
+  // トークンがある場合は、userがnullでもアクセスを許可
+  // （ネットワークエラー等でuser取得に失敗した場合）
+  // 実際の認証チェックは各APIコールで行われる
+  const hasToken = !!localStorage.getItem('token');
+
+  if (!user && !hasToken) {
     return <Navigate to="/login" replace />;
   }
 
