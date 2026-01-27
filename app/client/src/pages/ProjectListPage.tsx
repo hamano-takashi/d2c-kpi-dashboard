@@ -16,6 +16,9 @@ export default function ProjectListPage() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [showProjectDeleteModal, setShowProjectDeleteModal] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [deletingProject, setDeletingProject] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -70,6 +73,28 @@ export default function ProjectListPage() {
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+
+    setDeletingProject(true);
+    try {
+      await projects.delete(projectToDelete.id);
+      setShowProjectDeleteModal(false);
+      setProjectToDelete(null);
+      loadProjects();
+    } catch (err: any) {
+      alert(err.message || 'プロジェクト削除に失敗しました');
+    } finally {
+      setDeletingProject(false);
+    }
+  };
+
+  const openProjectDeleteModal = (project: Project, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setProjectToDelete(project);
+    setShowProjectDeleteModal(true);
+  };
+
   if (loading) {
     return (
       <div className="loading" style={{ minHeight: '100vh' }}>
@@ -114,14 +139,31 @@ export default function ProjectListPage() {
               <div
                 key={project.id}
                 className="card"
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: 'pointer', position: 'relative' }}
                 onClick={() => navigate(`/project/${project.id}`)}
               >
                 <div className="flex-between mb-2">
                   <span style={{ fontSize: '1.5rem' }}>📊</span>
-                  <span className={`badge badge-${project.role === 'admin' ? 'success' : project.role === 'editor' ? 'info' : 'warning'}`}>
-                    {ROLE_LABELS[project.role]}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span className={`badge badge-${project.role === 'admin' ? 'success' : project.role === 'editor' ? 'info' : 'warning'}`}>
+                      {ROLE_LABELS[project.role]}
+                    </span>
+                    {project.role === 'admin' && (
+                      <button
+                        onClick={(e) => openProjectDeleteModal(project, e)}
+                        className="btn btn-sm"
+                        style={{
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.75rem',
+                          background: 'var(--danger)',
+                          color: 'white',
+                          border: 'none',
+                        }}
+                      >
+                        削除
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.5rem' }}>
                   {project.name}
@@ -225,6 +267,44 @@ export default function ProjectListPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showProjectDeleteModal && projectToDelete && (
+        <div className="modal-overlay" onClick={() => setShowProjectDeleteModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ color: 'var(--danger)' }}>プロジェクト削除</h2>
+              <button className="modal-close" onClick={() => setShowProjectDeleteModal(false)}>
+                ×
+              </button>
+            </div>
+
+            <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
+              この操作は取り消せません。プロジェクト「{projectToDelete.name}」と、関連するすべてのデータ（目標値、実績値）が削除されます。
+            </div>
+
+            <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowProjectDeleteModal(false);
+                  setProjectToDelete(null);
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleDeleteProject}
+                disabled={deletingProject}
+              >
+                {deletingProject ? '削除中...' : 'プロジェクトを削除'}
+              </button>
+            </div>
           </div>
         </div>
       )}

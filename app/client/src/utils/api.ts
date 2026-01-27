@@ -77,6 +77,8 @@ export const projects = {
   create: (data: { name: string }) =>
     request<any>('/projects', { method: 'POST', body: JSON.stringify(data) }),
   get: (projectId: string) => request<any>(`/projects/${projectId}`),
+  delete: (projectId: string) =>
+    request<{ message: string }>(`/projects/${projectId}`, { method: 'DELETE' }),
 };
 
 // メンバーAPI

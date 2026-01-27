@@ -365,6 +365,38 @@ app.get('/api/projects/:projectId', authenticate, checkRole(['admin', 'editor', 
   res.json({ ...project, userRole: req.userRole });
 });
 
+// プロジェクト削除（オーナーのみ）
+app.delete('/api/projects/:projectId', authenticate, checkRole(['admin']), async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id;
+
+    // プロジェクトの存在とオーナー確認
+    const project = await get('SELECT * FROM projects WHERE id = ?', [projectId]);
+    if (!project) {
+      return res.status(404).json({ error: 'プロジェクトが見つかりません' });
+    }
+
+    // オーナーのみ削除可能
+    if (project.owner_id !== userId) {
+      return res.status(403).json({ error: 'プロジェクトを削除できるのはオーナーのみです' });
+    }
+
+    // 関連データを削除
+    await run('DELETE FROM kpi_actuals WHERE project_id = ?', [projectId]);
+    await run('DELETE FROM kpi_targets WHERE project_id = ?', [projectId]);
+    await run('DELETE FROM project_members WHERE project_id = ?', [projectId]);
+    await run('DELETE FROM projects WHERE id = ?', [projectId]);
+
+    saveDatabase();
+
+    res.json({ message: 'プロジェクトを削除しました' });
+  } catch (error) {
+    console.error('Delete project error:', error);
+    res.status(500).json({ error: 'プロジェクト削除に失敗しました' });
+  }
+});
+
 // ========== メンバー管理API ==========
 
 // メンバー一覧取得
