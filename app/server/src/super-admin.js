@@ -418,17 +418,191 @@ router.get('/kpi-templates/:templateId', authenticateSuperAdmin, async (req, res
 // ========== ダッシュボード統計 ==========
 
 router.get('/stats', authenticateSuperAdmin, async (req, res) => {
-  const totalTenants = await get('SELECT COUNT(*) as count FROM tenants WHERE status = "active"');
+  const totalTenants = await get('SELECT COUNT(*) as count FROM tenants WHERE status != \'deleted\'');
   const totalUsers = await get('SELECT COUNT(*) as count FROM users');
+  const tenantUsers = await get('SELECT COUNT(*) as count FROM users WHERE tenant_id IS NOT NULL');
+  const independentUsers = await get('SELECT COUNT(*) as count FROM users WHERE tenant_id IS NULL');
   const totalProjects = await get('SELECT COUNT(*) as count FROM projects');
-  const recentTenants = await all('SELECT id, name, created_at FROM tenants WHERE status = "active" ORDER BY created_at DESC LIMIT 5');
+  const recentTenants = await all('SELECT id, name, created_at FROM tenants WHERE status != \'deleted\' ORDER BY created_at DESC LIMIT 5');
 
   res.json({
     totalTenants: totalTenants?.count || 0,
     totalUsers: totalUsers?.count || 0,
+    tenantUsers: tenantUsers?.count || 0,
+    independentUsers: independentUsers?.count || 0,
     totalProjects: totalProjects?.count || 0,
     recentTenants
   });
+});
+
+// ========== 独立ユーザー管理（テナントなしユーザー） ==========
+
+// 独立ユーザー一覧取得
+router.get('/users/independent', authenticateSuperAdmin, async (req, res) => {
+  try {
+    const users = await all(`
+      SELECT
+        u.id, u.email, u.name, u.role, u.created_at,
+        (SELECT COUNT(*) FROM projects WHERE owner_id = u.id) as project_count
+      FROM users u
+      WHERE u.tenant_id IS NULL
+      ORDER BY u.created_at DESC
+    `);
+    res.json(users);
+  } catch (error) {
+    console.error('Get independent users error:', error);
+    res.status(500).json({ error: '独立ユーザー一覧の取得に失敗しました' });
+  }
+});
+
+// ユーザーをテナントに割り当て
+router.put('/users/:userId/assign-tenant', authenticateSuperAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { tenantId, role } = req.body;
+
+    // ユーザー存在確認
+    const user = await get('SELECT * FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'ユーザーが見つかりません' });
+    }
+
+    // テナント存在確認
+    const tenant = await get('SELECT * FROM tenants WHERE id = ? AND status != \'deleted\'', [tenantId]);
+    if (!tenant) {
+      return res.status(404).json({ error: 'テナントが見つかりません' });
+    }
+
+    // 同じメールアドレスのユーザーがテナントに既に存在するかチェック
+    const existingUser = await get(
+      'SELECT id FROM users WHERE email = ? AND tenant_id = ? AND id != ?',
+      [user.email, tenantId, userId]
+    );
+    if (existingUser) {
+      return res.status(400).json({ error: 'このメールアドレスは既にこのテナントに登録されています' });
+    }
+
+    // ユーザーのテナントを更新
+    await run(
+      'UPDATE users SET tenant_id = ?, role = ? WHERE id = ?',
+      [tenantId, role || 'member', userId]
+    );
+
+    // ユーザーが所有するプロジェクトのテナントも更新
+    await run(
+      'UPDATE projects SET tenant_id = ? WHERE owner_id = ? AND tenant_id IS NULL',
+      [tenantId, userId]
+    );
+
+    saveDatabase();
+
+    const updatedUser = await get('SELECT id, email, name, role, tenant_id FROM users WHERE id = ?', [userId]);
+    res.json({
+      message: 'ユーザーをテナントに割り当てました',
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('Assign tenant error:', error);
+    res.status(500).json({ error: 'テナント割り当てに失敗しました' });
+  }
+});
+
+// ユーザー権限変更
+router.put('/users/:userId/role', authenticateSuperAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    // ユーザー存在確認
+    const user = await get('SELECT * FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'ユーザーが見つかりません' });
+    }
+
+    // 権限の検証
+    const validRoles = ['tenant_admin', 'member'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ error: '無効な権限です' });
+    }
+
+    await run('UPDATE users SET role = ? WHERE id = ?', [role, userId]);
+    saveDatabase();
+
+    const updatedUser = await get('SELECT id, email, name, role, tenant_id FROM users WHERE id = ?', [userId]);
+    res.json({
+      message: '権限を変更しました',
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('Update role error:', error);
+    res.status(500).json({ error: '権限変更に失敗しました' });
+  }
+});
+
+// 独立ユーザー削除
+router.delete('/users/:userId', authenticateSuperAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // ユーザー存在確認
+    const user = await get('SELECT * FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'ユーザーが見つかりません' });
+    }
+
+    // プロジェクトメンバーから削除
+    await run('DELETE FROM project_members WHERE user_id = ?', [userId]);
+
+    // ユーザーが所有するプロジェクトの処理
+    const ownedProjects = await all('SELECT id FROM projects WHERE owner_id = ?', [userId]);
+    for (const project of ownedProjects) {
+      // 他のメンバーがいれば最初のメンバーをオーナーに
+      const otherMember = await get(
+        'SELECT user_id FROM project_members WHERE project_id = ? AND user_id != ? LIMIT 1',
+        [project.id, userId]
+      );
+      if (otherMember) {
+        await run('UPDATE projects SET owner_id = ? WHERE id = ?', [otherMember.user_id, project.id]);
+      } else {
+        // 他のメンバーがいなければプロジェクトを削除
+        await run('DELETE FROM kpi_actuals WHERE project_id = ?', [project.id]);
+        await run('DELETE FROM kpi_targets WHERE project_id = ?', [project.id]);
+        await run('DELETE FROM project_members WHERE project_id = ?', [project.id]);
+        await run('DELETE FROM projects WHERE id = ?', [project.id]);
+      }
+    }
+
+    // KPI実績の更新者IDをNULL化（外部キー制約対応）
+    await run('UPDATE kpi_actuals SET updated_by = NULL WHERE updated_by = ?', [userId]);
+
+    // ユーザー削除
+    await run('DELETE FROM users WHERE id = ?', [userId]);
+
+    saveDatabase();
+    res.json({ message: 'ユーザーを削除しました' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'ユーザー削除に失敗しました' });
+  }
+});
+
+// 全ユーザー一覧取得（テナント所属含む）
+router.get('/users/all', authenticateSuperAdmin, async (req, res) => {
+  try {
+    const users = await all(`
+      SELECT
+        u.id, u.email, u.name, u.role, u.tenant_id, u.created_at,
+        t.name as tenant_name,
+        (SELECT COUNT(*) FROM projects WHERE owner_id = u.id) as project_count
+      FROM users u
+      LEFT JOIN tenants t ON u.tenant_id = t.id
+      ORDER BY u.created_at DESC
+    `);
+    res.json(users);
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({ error: 'ユーザー一覧の取得に失敗しました' });
+  }
 });
 
 // ========== ヘルパー関数 ==========
