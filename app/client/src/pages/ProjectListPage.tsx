@@ -9,6 +9,7 @@ export default function ProjectListPage() {
   const navigate = useNavigate();
   const [projectList, setProjectList] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [creating, setCreating] = useState(false);
@@ -24,12 +25,25 @@ export default function ProjectListPage() {
     loadProjects();
   }, []);
 
-  const loadProjects = async () => {
+  const loadProjects = async (retry = true) => {
+    setLoadError(false);
     try {
       const data = await projects.list();
       setProjectList(data);
     } catch (err) {
       console.error('Failed to load projects:', err);
+      if (retry) {
+        // サーバーのコールドスタート対策: 3秒後にリトライ
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        try {
+          const data = await projects.list();
+          setProjectList(data);
+          return;
+        } catch (retryErr) {
+          console.error('Retry failed:', retryErr);
+        }
+      }
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -81,7 +95,9 @@ export default function ProjectListPage() {
       await projects.delete(projectToDelete.id);
       setShowProjectDeleteModal(false);
       setProjectToDelete(null);
-      loadProjects();
+      // 削除成功後、リストから直接除外してからリロード
+      setProjectList(prev => prev.filter(p => p.id !== projectToDelete.id));
+      loadProjects(false);
     } catch (err: any) {
       alert(err.message || 'プロジェクト削除に失敗しました');
     } finally {
@@ -124,7 +140,22 @@ export default function ProjectListPage() {
           </div>
         </div>
 
-        {projectList.length === 0 ? (
+        {loadError ? (
+          <div className="card text-center" style={{ padding: '3rem' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+            <h2 style={{ marginBottom: '0.5rem' }}>データの読み込みに失敗しました</h2>
+            <p className="text-gray mb-4">サーバーに接続できませんでした。しばらく待ってから再試行してください。</p>
+            <button
+              onClick={() => {
+                setLoading(true);
+                loadProjects();
+              }}
+              className="btn btn-primary"
+            >
+              再読み込み
+            </button>
+          </div>
+        ) : projectList.length === 0 ? (
           <div className="card text-center" style={{ padding: '3rem' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
             <h2 style={{ marginBottom: '0.5rem' }}>プロジェクトがありません</h2>
@@ -153,11 +184,15 @@ export default function ProjectListPage() {
                         onClick={(e) => openProjectDeleteModal(project, e)}
                         className="btn btn-sm"
                         style={{
-                          padding: '0.25rem 0.5rem',
+                          padding: '0.25rem 0.75rem',
                           fontSize: '0.75rem',
                           background: 'var(--danger)',
                           color: 'white',
                           border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          zIndex: 10,
+                          position: 'relative',
                         }}
                       >
                         削除
