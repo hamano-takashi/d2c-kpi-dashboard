@@ -42,6 +42,7 @@ export default function KpiTreePage() {
   const [targets, setTargets] = useState<KpiTarget[]>([]);
   const [actuals, setActuals] = useState<KpiActual[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<string>('all');
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
@@ -69,17 +70,42 @@ export default function KpiTreePage() {
   const loadData = async () => {
     if (!projectId) return;
     setLoading(true);
+    setError(null);
     try {
-      const [masterData, targetData, actualData] = await Promise.all([
-        kpi.getMaster(),
-        kpi.getTargets(projectId, year),
-        kpi.getActuals(projectId, year, month),
-      ]);
+      // 個別にエラーハンドリングして、一部データ取得失敗でも動作するようにする
+      let masterData: KpiMaster[] = [];
+      let targetData: KpiTarget[] = [];
+      let actualData: KpiActual[] = [];
+
+      try {
+        masterData = await kpi.getMaster();
+      } catch (err) {
+        console.error('Failed to load KPI master:', err);
+        setError('KPIマスターデータの読み込みに失敗しました');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        targetData = await kpi.getTargets(projectId, year);
+      } catch (err) {
+        console.error('Failed to load targets:', err);
+        // 目標データ取得失敗は致命的ではないので続行
+      }
+
+      try {
+        actualData = await kpi.getActuals(projectId, year, month);
+      } catch (err) {
+        console.error('Failed to load actuals:', err);
+        // 実績データ取得失敗は致命的ではないので続行
+      }
+
       setKpiMaster(masterData);
       setTargets(targetData);
       setActuals(actualData);
     } catch (err) {
       console.error('Failed to load data:', err);
+      setError('データの読み込みに失敗しました');
     } finally {
       setLoading(false);
     }
@@ -316,6 +342,24 @@ export default function KpiTreePage() {
     return (
       <div className="loading">
         <div className="spinner"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <div className="header">
+          <h1>KPIツリー</h1>
+        </div>
+        <div className="card text-center" style={{ padding: '3rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+          <h2 style={{ marginBottom: '0.5rem', color: 'var(--danger)' }}>エラー</h2>
+          <p className="text-gray mb-4">{error}</p>
+          <button onClick={() => loadData()} className="btn btn-primary">
+            再読み込み
+          </button>
+        </div>
       </div>
     );
   }

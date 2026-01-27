@@ -17,6 +17,7 @@ export default function DataEntryPage() {
   const [actuals, setActuals] = useState<KpiActual[]>([]);
   const [editedActuals, setEditedActuals] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<string>('COMMANDER');
@@ -30,18 +31,40 @@ export default function DataEntryPage() {
   const loadData = async () => {
     if (!projectId) return;
     setLoading(true);
+    setError(null);
     try {
-      const [masterData, targetData, actualData] = await Promise.all([
-        kpi.getMaster(),
-        kpi.getTargets(projectId, year),
-        kpi.getActuals(projectId, year, month),
-      ]);
+      let masterData: KpiMaster[] = [];
+      let targetData: KpiTarget[] = [];
+      let actualData: KpiActual[] = [];
+
+      try {
+        masterData = await kpi.getMaster();
+      } catch (err) {
+        console.error('Failed to load KPI master:', err);
+        setError('KPIマスターデータの読み込みに失敗しました');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        targetData = await kpi.getTargets(projectId, year);
+      } catch (err) {
+        console.error('Failed to load targets:', err);
+      }
+
+      try {
+        actualData = await kpi.getActuals(projectId, year, month);
+      } catch (err) {
+        console.error('Failed to load actuals:', err);
+      }
+
       setKpiMaster(masterData);
       setTargets(targetData);
       setActuals(actualData);
       setEditedActuals(new Map());
     } catch (err) {
       console.error('Failed to load data:', err);
+      setError('データの読み込みに失敗しました');
     } finally {
       setLoading(false);
     }
@@ -162,6 +185,24 @@ export default function DataEntryPage() {
     return (
       <div className="loading">
         <div className="spinner"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <div className="header">
+          <h1>実績入力</h1>
+        </div>
+        <div className="card text-center" style={{ padding: '3rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+          <h2 style={{ marginBottom: '0.5rem', color: 'var(--danger)' }}>エラー</h2>
+          <p className="text-gray mb-4">{error}</p>
+          <button onClick={() => loadData()} className="btn btn-primary">
+            再読み込み
+          </button>
+        </div>
       </div>
     );
   }

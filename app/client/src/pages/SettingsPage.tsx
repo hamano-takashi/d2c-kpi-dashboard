@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const { project } = useOutletContext<ContextType>();
   const [kpiMaster, setKpiMaster] = useState<KpiMaster[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [initializingTargets, setInitializingTargets] = useState(false);
@@ -24,11 +25,13 @@ export default function SettingsPage() {
   }, []);
 
   const loadKpiMaster = async () => {
+    setLoadError(null);
     try {
       const data = await kpi.getMaster();
       setKpiMaster(data);
     } catch (err) {
       console.error('Failed to load KPI master:', err);
+      setLoadError('KPIマスターデータの読み込みに失敗しました');
     } finally {
       setLoading(false);
     }
@@ -111,6 +114,24 @@ export default function SettingsPage() {
     return (
       <div className="loading">
         <div className="spinner"></div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div>
+        <div className="header">
+          <h1>設定</h1>
+        </div>
+        <div className="card text-center" style={{ padding: '3rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+          <h2 style={{ marginBottom: '0.5rem', color: 'var(--danger)' }}>エラー</h2>
+          <p className="text-gray mb-4">{loadError}</p>
+          <button onClick={() => loadKpiMaster()} className="btn btn-primary">
+            再読み込み
+          </button>
+        </div>
       </div>
     );
   }

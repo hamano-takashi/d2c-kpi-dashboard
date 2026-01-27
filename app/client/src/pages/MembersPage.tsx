@@ -13,6 +13,7 @@ export default function MembersPage() {
   const { project, user } = useOutletContext<ContextType>();
   const [memberList, setMemberList] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<RoleType>('viewer');
@@ -29,11 +30,13 @@ export default function MembersPage() {
   const loadMembers = async () => {
     if (!projectId) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const data = await members.list(projectId);
       setMemberList(data);
     } catch (err) {
       console.error('Failed to load members:', err);
+      setLoadError('メンバー一覧の読み込みに失敗しました');
     } finally {
       setLoading(false);
     }
@@ -94,6 +97,24 @@ export default function MembersPage() {
     return (
       <div className="loading">
         <div className="spinner"></div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div>
+        <div className="header">
+          <h1>メンバー管理</h1>
+        </div>
+        <div className="card text-center" style={{ padding: '3rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+          <h2 style={{ marginBottom: '0.5rem', color: 'var(--danger)' }}>エラー</h2>
+          <p className="text-gray mb-4">{loadError}</p>
+          <button onClick={() => loadMembers()} className="btn btn-primary">
+            再読み込み
+          </button>
+        </div>
       </div>
     );
   }

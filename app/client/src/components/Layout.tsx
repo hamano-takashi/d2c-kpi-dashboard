@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { projects } from '../utils/api';
+import { projects, ApiError } from '../utils/api';
 import { Project } from '../types';
 
 export default function Layout() {
@@ -9,19 +9,65 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (projectId) {
+      setLoading(true);
+      setError(null);
       projects.get(projectId)
         .then(setProject)
-        .catch(() => navigate('/'));
+        .catch((err) => {
+          // 401エラーはapi.tsで処理されるので、ここでは403と404を処理
+          if (err instanceof ApiError) {
+            if (err.status === 403) {
+              setError('このプロジェクトへのアクセス権限がありません');
+            } else if (err.status === 404) {
+              setError('プロジェクトが見つかりません');
+            } else {
+              setError('プロジェクトの読み込みに失敗しました');
+            }
+          } else {
+            setError('プロジェクトの読み込みに失敗しました');
+          }
+        })
+        .finally(() => setLoading(false));
     }
-  }, [projectId, navigate]);
+  }, [projectId]);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  if (loading) {
+    return (
+      <div className="loading" style={{ minHeight: '100vh' }}>
+        <div className="spinner"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--gray-50)', padding: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="card text-center" style={{ maxWidth: '500px', padding: '2rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+          <h2 style={{ marginBottom: '0.5rem', color: 'var(--danger)' }}>エラー</h2>
+          <p className="text-gray mb-4">{error}</p>
+          <div className="flex gap-2" style={{ justifyContent: 'center' }}>
+            <button onClick={() => navigate('/')} className="btn btn-primary">
+              プロジェクト一覧に戻る
+            </button>
+            <button onClick={() => window.location.reload()} className="btn btn-secondary">
+              再読み込み
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!project) {
     return (

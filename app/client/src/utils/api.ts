@@ -4,6 +4,17 @@ function getToken(): string | null {
   return localStorage.getItem('token');
 }
 
+// APIエラークラス（エラー種別を識別可能にする）
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+    this.name = 'ApiError';
+  }
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -24,8 +35,20 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'エラーが発生しました' }));
-    throw new Error(error.error || 'エラーが発生しました');
+    const errorData = await response.json().catch(() => ({ error: 'エラーが発生しました' }));
+    const errorMessage = errorData.error || 'エラーが発生しました';
+
+    // 401 Unauthorized: トークン無効・期限切れ
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      // ログインページへリダイレクト（現在のURLを保存してリダイレクト後に戻れるようにする）
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/login' && currentPath !== '/register') {
+        window.location.href = '/login';
+      }
+    }
+
+    throw new ApiError(errorMessage, response.status);
   }
 
   return response.json();
