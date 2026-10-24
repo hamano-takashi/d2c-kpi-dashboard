@@ -6,6 +6,8 @@ services:
     buildCommand: cd app/client && npm install && npm run build && cd ../server && npm install
     startCommand: cd app/server && npm start
     envVars:
+      - key: NODE_VERSION
+        value: 22.23.4
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
