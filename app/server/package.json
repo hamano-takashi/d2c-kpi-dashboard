@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "verify:tls": "node scripts/verify-runtime-tls.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -15,6 +16,6 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.3",
     "sql.js": "^1.10.3",
-    "uuid": "^9.0.0"
+    "uuid": "^11.1.1"
   }
 }
